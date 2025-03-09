@@ -1,0 +1,177 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-06 16:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+#: .\categorization\admin.py:16 .\categorization\admin.py:45
+#: .\categorization\admin.py:76
+msgid "基本信息"
+msgstr ""
+
+#: .\categorization\admin.py:48 .\categorization\admin.py:79
+msgid "分类设置"
+msgstr ""
+
+#: .\categorization\models.py:7 .\categorization\models.py:34
+#: .\categorization\models.py:58
+msgid "名称"
+msgstr ""
+
+#: .\categorization\models.py:8
+msgid "描述"
+msgstr ""
+
+#: .\categorization\models.py:9 .\categorization\models.py:35
+#: .\categorization\models.py:60
+msgid "图标"
+msgstr ""
+
+#: .\categorization\models.py:10
+msgid "是否默认账本"
+msgstr ""
+
+#: .\categorization\models.py:11 .\categorization\models.py:42
+#: .\categorization\models.py:61
+msgid "排序"
+msgstr ""
+
+#: .\categorization\models.py:11 .\categorization\models.py:42
+#: .\categorization\models.py:61
+msgid "数字越小排序越靠前"
+msgstr ""
+
+#: .\categorization\models.py:13 .\categorization\models.py:44
+#: .\categorization\models.py:63
+msgid "创建时间"
+msgstr ""
+
+#: .\categorization\models.py:14 .\categorization\models.py:45
+#: .\categorization\models.py:64
+msgid "更新时间"
+msgstr ""
+
+#: .\categorization\models.py:17 .\categorization\models.py:18
+msgid "账本分类"
+msgstr ""
+
+#: .\categorization\models.py:28
+msgid "借记卡/现金"
+msgstr "デビット/現金"
+
+#: .\categorization\models.py:29
+msgid "信用卡"
+msgstr "クレジットカード"
+
+#: .\categorization\models.py:30
+msgid "借贷"
+msgstr "ローン"
+
+#: .\categorization\models.py:31
+msgid "投资"
+msgstr "投資"
+
+#: .\categorization\models.py:37
+msgid "资产大分类"
+msgstr ""
+
+#: .\categorization\models.py:41
+msgid "是否正资产"
+msgstr ""
+
+#: .\categorization\models.py:48 .\categorization\models.py:49
+msgid "资产分类"
+msgstr ""
+
+#: .\categorization\models.py:59
+msgid "是否收入"
+msgstr "収入"
+
+#: .\categorization\models.py:59
+msgid "默认为支出"
+msgstr "支出"
+
+#: .\categorization\models.py:67 .\categorization\models.py:68
+msgid "交易分类"
+msgstr ""
+
+#: .\categorization\models.py:72
+msgid "收入"
+msgstr "収入"
+
+#: .\categorization\models.py:72
+msgid "支出"
+msgstr "支出"
+
+#: .\usercenter\middleware\auth.py:42 .\usercenter\middleware\auth.py:48
+msgid "认证失败"
+msgstr ""
+
+#: .\usercenter\middleware\auth.py:43
+msgid "未提供有效的认证凭据"
+msgstr ""
+
+#: .\usercenter\middleware\exception.py:27
+msgid "服务器内部错误"
+msgstr ""
+
+#: .\usercenter\middleware\exception.py:29
+msgid "发生了一个意外错误，请稍后再试"
+msgstr ""
+
+#: .\usercenter\middleware\ratelimit.py:65
+msgid "请求过于频繁"
+msgstr ""
+
+#: .\usercenter\middleware\ratelimit.py:67
+msgid "请稍后再试"
+msgstr ""
+
+#: .\usercenter\middleware\response.py:37
+msgid "成功"
+msgstr ""
+
+#: .\usercenter\middleware\response.py:37
+msgid "错误"
+msgstr ""
+
+#: .\usercenter\views\language.py:26
+msgid "语言已切换"
+msgstr ""
+
+msgid "获取成功"
+msgstr "正常に取得しました"
+
+msgid "创建成功"
+msgstr "正常に作成されました"
+
+msgid "更新成功"
+msgstr "正常に更新されました"
+
+msgid "删除成功"
+msgstr "正常に削除されました"
+
+msgid "账本名称不能为空"
+msgstr "帳簿名を空にすることはできません"
+
+msgid "资产分类名称不能为空"
+msgstr "資産カテゴリ名を空にすることはできません"
+
+msgid "交易分类名称不能为空"
+msgstr "取引カテゴリ名を空にすることはできません"
+
+msgid "未找到默认账本"
+msgstr "デフォルトの帳簿が見つかりません"

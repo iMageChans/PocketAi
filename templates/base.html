@@ -1,0 +1,17 @@
+{% load i18n %}
+{% load static %}
+
+<div class="language-selector">
+    <select id="language-selector">
+        {% get_current_language as CURRENT_LANGUAGE %}
+        {% get_available_languages as AVAILABLE_LANGUAGES %}
+        {% for lang_code, lang_name in AVAILABLE_LANGUAGES %}
+            <option value="{{ lang_code }}" 
+                    {% if lang_code == CURRENT_LANGUAGE %}selected{% endif %}>
+                {{ lang_name }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
+
+<script src="{% static 'js/language_selector.js' %}"></script> 
