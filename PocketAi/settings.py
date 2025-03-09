@@ -136,11 +136,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 # 静态文件配置
-STATIC_URL = os.environ.get('STATIC_URL', '/static/pocketai/')  # 应用特定的URL前缀
+STATIC_URL = '/pocket/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 媒体文件配置
-MEDIA_URL = os.environ.get('MEDIA_URL', '/media/pocketai/')  # 应用特定的URL前缀
+MEDIA_URL = '/pocket/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
@@ -149,7 +149,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# SECURE_SSL_REDIRECT = True
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+
+# 添加这一行
+FORCE_SCRIPT_NAME = '/pocket'
+
+# 确保这些设置也已启用
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+USE_X_FORWARDED_HOST = True

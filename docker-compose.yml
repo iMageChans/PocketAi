@@ -10,13 +10,14 @@ services:
       - ./staticfiles:/app/staticfiles  # 项目静态文件
       - ./media:/app/media  # 媒体文件
       # 映射到宿主机的特定目录，方便nginx配置
-      - /var/www/static/pocketai:/app/staticfiles
-      - /var/www/media/pocketai:/app/media
+      - /var/www/pocket/static:/app/staticfiles
+      - /var/www/pocket/static:/app/media
     ports:
       - "8002:8002"
     environment:
       - DEBUG=False
       - ALLOWED_HOSTS=localhost,127.0.0.1
-      - STATIC_URL=/static/pocketai/  # 注意这里使用了应用特定的路径
-      - MEDIA_URL=/media/pocketai/
+      - STATIC_URL=/pocket/static/  # 注意这里使用了应用特定的路径
+      - MEDIA_URL=/pocket/static/
       - TIME_ZONE=Asia/Shanghai
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8002"]
