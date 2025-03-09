@@ -26,7 +26,8 @@ SECRET_KEY = 'django-insecure--w4w$iuai2@kj@+9e_tfhs3_8g^729)0521ue_ej(#y1w+g@+l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost',
+                 '127.0.0.1']
 
 BASE_URL = 'https://users.pulseheath.com/'
 TOKEN_COOKIE_NAME = 'joker'
