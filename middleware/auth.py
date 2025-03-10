@@ -9,9 +9,9 @@ from urllib3.util.retry import Retry
 class TokenAuthMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-        self.auth_api_url = f"{settings.BASE_URL.rstrip('/')}/api/users/me/"
+        self.auth_api_url = f"{settings.BASE_URL.rstrip('/')}/users/api/users/me/"
         self.exempt_paths = [
-            '/api/auth/login/',
+            '/users/api/auth/login/',
             '/admin/',
             '/openapi.json'
         ]
