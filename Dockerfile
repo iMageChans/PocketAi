@@ -18,6 +18,7 @@ COPY . .
 
 # 收集静态文件
 RUN python manage.py collectstatic --noinput
+RUN python manage.py migrate
 
 # 创建SQLite数据库目录并确保权限
 RUN mkdir -p /app/data && chmod 777 /app/data
