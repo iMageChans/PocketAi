@@ -9,6 +9,7 @@ from django.http import Http404
 import pytz
 from django.utils import timezone
 
+from categorization.models import TransactionCategory
 from transactions.models import Transaction
 from utils.permissions import IsAuthenticatedExternal
 from utils.mixins import *
@@ -307,11 +308,16 @@ class MessageViewSet(CreateModelMixin,
         if len(analyst['content']['transactions']) > 0:
             transactions = analyst['content']['transactions']
             for transaction in transactions:
+                transaction_category = TransactionCategory.objects.get(name=transactions['category'],
+                                                                       is_income=True if transaction['type'] == 'expense' else False)
+                if not transaction_category:
+                    transaction_category = TransactionCategory.objects.get(name="Others",
+                                                                           is_income=True if transaction['type'] == 'expense' else False)
                 new_transaction = Transaction.objects.create(
                     user_id=user_id,
                     ledger_id=ledger_id,
                     asset_id=asset_id,
-                    category_name=transaction['category'] or "Others",
+                    category=transaction_category,
                     amount=transaction['amount'],
                     transaction_date=utc_now.astimezone(local_tz),
                     notes=transaction['note'],
