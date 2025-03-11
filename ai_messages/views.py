@@ -308,6 +308,7 @@ class MessageViewSet(CreateModelMixin,
         if len(analyst['content']['transactions']) > 0:
             transactions = analyst['content']['transactions']
             for transaction in transactions:
+                print(transaction)
                 transaction_category = TransactionCategory.objects.get(name=transactions['category'],
                                                                        is_income=True if transaction['type'] == 'expense' else False)
                 if not transaction_category:
