@@ -305,7 +305,7 @@ class MessageViewSet(CreateModelMixin,
 
         transaction_ids = []
         print(analyst)
-        print(len(analyst['transactions']))
+        print(len(analyst['content']['transactions']))
 
         if len(analyst['transactions']) > 0:
             transactions = analyst['transactions']
