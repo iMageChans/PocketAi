@@ -313,6 +313,10 @@ class MessageViewSet(CreateModelMixin,
                 for transaction in transactions:
                     try:
                         # 创建交易记录，使用正确的字段名
+                        if transaction.get('type') == 'expense':
+                            is_expense = True
+                        else:
+                            is_expense = False
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
@@ -321,11 +325,11 @@ class MessageViewSet(CreateModelMixin,
                             # 如果Transaction模型有category字段(ForeignKey):
                             # category_id=get_category_id(transaction.get('category'), transaction.get('type')),
                             # 如果Transaction模型直接存储分类名称:
-                            category_id=get_category_id(transaction.get('category'), True if transaction.get('type') == 'expense' else False),
+                            category_id=get_category_id(transaction.get('category'), is_expense),
                             amount=transaction.get('amount', 0),
                             transaction_date=utc_now.astimezone(local_tz),
                             notes=transaction.get('notes', transaction.get('note', '')),
-                            is_expense=True if transaction.get('type') == 'expense' else False,
+                            is_expense=is_expense,
                         )
                         transaction_ids.append(new_transaction.id)
                     except Exception as e:
