@@ -26,4 +26,4 @@ class LedgerCreateSerializer(serializers.ModelSerializer):
     """创建账本的序列化器"""
     class Meta:
         model = Ledger
-        fields = ['name', 'category', 'is_default'] 
+        fields = ['id', 'name', 'category', 'is_default']
