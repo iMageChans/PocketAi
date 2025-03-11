@@ -68,9 +68,15 @@ class MessageSessionAdmin(admin.ModelAdmin):
     
     def message_count(self, obj):
         """显示消息数量"""
-        count = obj.messages.count()
-        return format_html('<span title="{}">{}</span>', 
-                          _('消息总数'), count)
+        try:
+            # 使用try-except来处理可能的属性错误
+            count = Message.objects.filter(session=obj).count()
+            return format_html('<span title="{}">{}</span>', 
+                              _('消息总数'), count)
+        except Exception as e:
+            # 记录错误并返回0
+            return format_html('<span title="{}">{}</span>', 
+                              str(e), 0)
     message_count.short_description = _('消息数')
 
 
@@ -80,14 +86,14 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = ('message_type', 'content_preview', 'session_display', 'is_voice', 'has_transactions', 'created_at')
     list_filter = ('is_user', 'created_at', 'session__model')
     search_fields = ('content', 'session__assistant_name', 'session__user_id')
-    readonly_fields = ('created_at', 'updated_at', 'random_seed')
+    readonly_fields = ('created_at', 'updated_at', 'random')
     
     fieldsets = (
         (_('基本信息'), {
             'fields': ('session', 'is_user', 'is_voice', 'content')
         }),
         (_('关联信息'), {
-            'fields': ('transaction_ids', 'random_seed')
+            'fields': ('transaction_ids', 'random')
         }),
         (_('时间信息'), {
             'fields': ('created_at', 'updated_at'),

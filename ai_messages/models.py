@@ -43,7 +43,7 @@ class Message(models.Model):
     session = models.ForeignKey(
         MessageSession,
         on_delete=models.CASCADE,
-        related_name='ai_messages',
+        related_name='messages',
         verbose_name=_('所属会话')
     )
 
@@ -59,11 +59,9 @@ class Message(models.Model):
     )
     
     # 随机数字段
-    random_seed = models.CharField(
+    random = models.IntegerField(
         _('随机种子'),
-        max_length=36,
-        default=uuid.uuid4,
-        help_text=_('用于消息的唯一性标识')
+        default=0
     )
     
     # 消息类型字段 - 使用字符串类型支持多种消息类型

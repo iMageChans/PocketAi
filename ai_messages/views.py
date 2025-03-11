@@ -330,7 +330,7 @@ class MessageViewSet(CreateModelMixin,
             content=chat,
             message_type=Message.TYPE_ASSISTANT,
             is_user=False,
-            random_seed=random.randint(1, 90),
+            random=random.randint(1, 90),
             transaction_ids=transaction_ids
         )
 
