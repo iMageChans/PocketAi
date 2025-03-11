@@ -36,7 +36,6 @@ def create_ai_analyst(users_input, token, assistant_name="financial_analyst", mo
     if rsp.status_code == 200:
         raw_content = rsp.json()['data']
         print(raw_content)
-        parsed_content = json.loads(raw_content)
         if isinstance(raw_content, str):
             cleaned_content = raw_content.strip()
             # 处理可能的 ```json 标记
@@ -53,8 +52,6 @@ def create_ai_analyst(users_input, token, assistant_name="financial_analyst", mo
             return parsed_content
         elif raw_content is None:
             parsed_content = {"transactions": []}
-            return parsed_content
-        else:
             return parsed_content
 
 
