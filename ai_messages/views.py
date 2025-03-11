@@ -307,7 +307,7 @@ class MessageViewSet(CreateModelMixin,
         print(analyst)
         print(len(analyst['content']['transactions']))
 
-        if len(analyst['transactions']) > 0:
+        if len(analyst['content']['transactions']) > 0:
             transactions = analyst['transactions']
             for transaction in transactions:
                 new_transaction = Transaction.objects.create(
