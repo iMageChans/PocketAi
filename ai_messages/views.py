@@ -301,7 +301,7 @@ class MessageViewSet(CreateModelMixin,
         analyst = create_ai_analyst(content, auth_header, model_name=model_name)
 
         utc_now = timezone.now()
-        local_tz = pytz.timezone(self.request.remote_user.timezone)
+        local_tz = pytz.timezone(self.request.remote_user['timezone'])
 
         transaction_ids = []
 
