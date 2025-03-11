@@ -20,6 +20,7 @@ class GoalViewSet(CreateModelMixin,
                   RetrieveModelMixin,
                   UpdateModelMixin,
                   PartialUpdateModelMixin,
+                  DestroyModelMixin,
                   ListModelMixin,
                   GenericViewSet):
     """梦想基金视图集"""
