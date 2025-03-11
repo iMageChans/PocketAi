@@ -129,16 +129,6 @@ class MessageViewSet(CreateModelMixin,
     # 默认语言
     DEFAULT_LANGUAGE = 'en'
 
-    # 模型名称映射
-    MODEL_NAME_MAPPING = {
-        'gpt-4': 'gpt-4',
-        'gpt-3.5': 'gpt-3.5-turbo',
-        'claude-3': 'claude-3-opus',
-        'claude-2': 'claude-2',
-        'qwen': 'qwen-max',
-        # 添加更多模型映射...
-    }
-
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
         if self.action == 'create':
@@ -292,7 +282,16 @@ class MessageViewSet(CreateModelMixin,
 
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
 
-        analyst = create_ai_analyst(content, auth_header)
+        model_name = session.model
+
+        if model_name == 'ChatGPT':
+            model_name = 'gpt-3.5-turbo'
+        elif model_name == 'DeepSeek':
+            model_name = 'deepseek-chat'
+        else:
+            model_name = 'qwen-max'
+
+        analyst = create_ai_analyst(content, auth_header, model_name=model_name)
 
         utc_now = timezone.now()
         local_tz = pytz.timezone(request.remote_user.timezone)
@@ -314,7 +313,7 @@ class MessageViewSet(CreateModelMixin,
                 )
                 transaction_ids.append(new_transaction.id)
 
-        chat = creat_ai_chat(content, auth_header, assistant_name, language=language)
+        chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
 
         ai_message = Message(
             user_id=user_id,
