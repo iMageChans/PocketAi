@@ -65,6 +65,7 @@ def creat_ai_chat(users_input, token, assistant_name="Alice", model_name="gpt-3.
 
     if rsp.status_code == 200:
         raw_content = rsp.json()['data']['content']
+        print(raw_content)
         if isinstance(raw_content, str):
             cleaned_content = raw_content.strip()
             # 处理可能的 ```json 标记
@@ -90,6 +91,6 @@ def get_assistant_list(token):
     else:
         return []
 
-
-# print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
-
+chat = creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
+print(isinstance(chat, str))
+print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
