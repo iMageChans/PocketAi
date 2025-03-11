@@ -345,6 +345,7 @@ class MessageViewSet(CreateModelMixin,
 
         # 调用AI聊天服务
         chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
+        print(chat)
 
         # 确保chat不为空
         if not chat:
