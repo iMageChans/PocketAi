@@ -233,6 +233,13 @@ class MessageViewSet(CreateModelMixin,
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        if not ledger_id:
+            return Response({
+                'code': 400,
+                'msg': _('账本不能为空'),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         if not content:
             return Response({
                 'code': 400,
