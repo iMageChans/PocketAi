@@ -218,6 +218,7 @@ class MessageViewSet(CreateModelMixin,
 
     def _process_message(self, request, is_voice=False):
         """处理消息的通用方法"""
+        print(request.data)
         # 验证请求数据
         session_id = request.data.get('session_id')
         content = request.data.get('content')
