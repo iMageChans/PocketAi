@@ -1,4 +1,5 @@
 import random
+import json
 
 from rest_framework import serializers
 from rest_framework.decorators import action
@@ -9,7 +10,6 @@ from django.http import Http404
 import pytz
 from django.utils import timezone
 
-from categorization.models import TransactionCategory
 from transactions.models import Transaction
 from utils.permissions import IsAuthenticatedExternal
 from utils.mixins import *
@@ -219,14 +219,13 @@ class MessageViewSet(CreateModelMixin,
 
     def _process_message(self, request, is_voice=False):
         """处理消息的通用方法"""
-        print(request.data)
         # 验证请求数据
         session_id = request.data.get('session_id')
         content = request.data.get('content')
         ledger_id = request.data.get('ledger_id')
         asset_id = request.data.get('asset_id', None)
         language = request.data.get('language', self.DEFAULT_LANGUAGE)
-        assistant_name = request.data.get('assistant_name', 'Alice')
+        assistant_name = request.data.get('assistant_name', None)
 
         if not session_id:
             return Response({
@@ -298,38 +297,67 @@ class MessageViewSet(CreateModelMixin,
         else:
             model_name = 'qwen-max'
 
+        # 调用AI分析服务
         analyst = create_ai_analyst(content, auth_header, model_name=model_name)
 
         utc_now = timezone.now()
-        local_tz = pytz.timezone(self.request.remote_user.get('timezone'))
+        local_tz = pytz.timezone(self.request.remote_user.get('timezone', 'UTC'))
 
         transaction_ids = []
+        print(analyst)  # 保留调试输出
 
-        if len(analyst['content']['transactions']) > 0:
-            transactions = analyst['content']['transactions']
-            for transaction in transactions:
-                print(transaction)
-                transaction_category = TransactionCategory.objects.get(name=transactions['category'],
-                                                                       is_income=True if transaction['type'] == 'expense' else False)
-                if not transaction_category:
-                    transaction_category = TransactionCategory.objects.get(name="Others",
-                                                                           is_income=True if transaction['type'] == 'expense' else False)
-                new_transaction = Transaction.objects.create(
-                    user_id=user_id,
-                    ledger_id=ledger_id,
-                    asset_id=asset_id,
-                    category=transaction_category,
-                    amount=transaction['amount'],
-                    transaction_date=utc_now.astimezone(local_tz),
-                    notes=transaction['note'],
-                    is_expense=True if transaction['type'] == 'expense' else False,
-                )
-                transaction_ids.append(new_transaction.id)
+        # 检查analyst的结构并安全地访问transactions
+        try:
+            # 如果content是字符串，尝试解析为JSON
+            if isinstance(analyst.get('content'), str):
+                import json
+                try:
+                    content_data = json.loads(analyst['content'])
+                    if isinstance(content_data, dict) and 'transactions' in content_data:
+                        transactions = content_data.get('transactions', [])
+                    else:
+                        transactions = []
+                except json.JSONDecodeError:
+                    # 如果不是有效的JSON，则没有交易
+                    transactions = []
+            # 如果content是字典，直接访问transactions
+            elif isinstance(analyst.get('content'), dict) and 'transactions' in analyst['content']:
+                transactions = analyst['content'].get('transactions', [])
+            # 如果analyst直接包含transactions
+            elif 'transactions' in analyst:
+                transactions = analyst.get('transactions', [])
+            else:
+                transactions = []
+            
+            print(f"找到 {len(transactions)} 个交易")  # 调试输出
+            
+            # 处理交易
+            if transactions:
+                for transaction in transactions:
+                    new_transaction = Transaction.objects.create(
+                        user_id=user_id,
+                        ledger_id=ledger_id,
+                        asset_id=asset_id,
+                        category_name=transaction.get('category') or "Others",
+                        amount=transaction.get('amount', 0),
+                        transaction_date=utc_now.astimezone(local_tz),
+                        notes=transaction.get('notes', transaction.get('note', '')),
+                        is_expense=True if transaction.get('type') == 'expense' else False,
+                    )
+                    transaction_ids.append(new_transaction.id)
+        except Exception as e:
+            # 记录错误但继续执行
+            print(f"处理交易时出错: {str(e)}")
+            logger.error(f"处理交易时出错: {str(e)}")
 
+        # 调用AI聊天服务
         chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
-        print(isinstance(chat, str))
-        print(chat)
 
+        # 确保chat不为空
+        if not chat:
+            chat = _('AI服务未返回有效回复')
+
+        # 创建AI回复消息
         ai_message = Message.objects.create(
             user_id=user_id,
             session=session,
@@ -337,8 +365,12 @@ class MessageViewSet(CreateModelMixin,
             message_type=Message.TYPE_ASSISTANT,
             is_user=False,
             random=random.randint(1, 90),
-            transaction_ids=transaction_ids
         )
+
+        # 如果有交易ID，设置到消息中
+        if transaction_ids:
+            ai_message.transaction_ids = ','.join(str(id) for id in transaction_ids)
+            ai_message.save()
 
         return Response({
             'code': 200,
