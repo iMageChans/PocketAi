@@ -276,7 +276,7 @@ class MessageViewSet(CreateModelMixin,
             }, status=status.HTTP_404_NOT_FOUND)
 
         # 保存用户消息
-        user_message = Message(
+        user_message = Message.objects.create(
             user_id=user_id,
             session=session,
             content=content,
@@ -284,8 +284,6 @@ class MessageViewSet(CreateModelMixin,
             is_user=True,
             is_voice=is_voice,
         )
-
-        user_message.save()
 
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
 
@@ -325,7 +323,7 @@ class MessageViewSet(CreateModelMixin,
         chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
         print(chat)
 
-        ai_message = Message(
+        ai_message = Message.objects.create(
             user_id=user_id,
             session=session,
             content=str(chat),
@@ -334,7 +332,6 @@ class MessageViewSet(CreateModelMixin,
             random_seed=random.randint(1, 90),
             transaction_ids=transaction_ids
         )
-        ai_message.save()
 
         return Response({
             'code': 200,
