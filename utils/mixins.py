@@ -118,6 +118,8 @@ class ListModelMixin(ResponseMixin, mixins.ListModelMixin):
 
         serializer = self.get_serializer(queryset, many=True)
         return self.get_success_response(
-            data=serializer.data, 
+            data={
+                "results": serializer.data,
+            },
             msg=_('获取成功')
         )
