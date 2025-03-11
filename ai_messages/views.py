@@ -338,6 +338,6 @@ class MessageViewSet(CreateModelMixin,
             'code': 200,
             'msg': '发送成功',
             'data': {
-                'results': [MessageSerializer(ai_message).data, MessageSerializer(ai_message).data]
+                'results': [MessageSerializer(user_message).data, MessageSerializer(ai_message).data]
             }
         })
