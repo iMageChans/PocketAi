@@ -315,8 +315,10 @@ class MessageViewSet(CreateModelMixin,
                         # 创建交易记录，使用正确的字段名
                         if transaction.get('type') == 'expense':
                             is_expense = True
+                            is_income = False
                         else:
                             is_expense = False
+                            is_income = True
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
@@ -325,7 +327,7 @@ class MessageViewSet(CreateModelMixin,
                             # 如果Transaction模型有category字段(ForeignKey):
                             # category_id=get_category_id(transaction.get('category'), transaction.get('type')),
                             # 如果Transaction模型直接存储分类名称:
-                            category_id=get_category_id(transaction.get('category'), is_expense),
+                            category_id=get_category_id(transaction.get('category'), is_income),
                             amount=transaction.get('amount', 0),
                             transaction_date=utc_now.astimezone(local_tz),
                             notes=transaction.get('notes', transaction.get('note', '')),
@@ -375,13 +377,13 @@ def get_category_id(category_name, transaction_type):
     """根据分类名称和交易类型获取分类ID"""
     from categorization.models import TransactionCategory
     
-    is_expense = transaction_type == 'expense'
+    is_income = transaction_type
     
     try:
         # 尝试查找匹配的分类
         category = TransactionCategory.objects.filter(
             name__icontains=category_name,
-            is_expense=is_expense
+            is_income=is_income
         ).first()
         
         if category:
@@ -389,7 +391,7 @@ def get_category_id(category_name, transaction_type):
         
         # 如果找不到匹配的分类，使用默认分类
         default_category = TransactionCategory.objects.filter(
-            is_expense=is_expense,
+            is_income=is_income,
             name='Others'
         ).first()
         
@@ -398,7 +400,7 @@ def get_category_id(category_name, transaction_type):
         
         # 如果没有默认分类，使用第一个分类
         first_category = TransactionCategory.objects.filter(
-            is_expense=is_expense
+            is_income=is_income
         ).first()
         
         if first_category:
