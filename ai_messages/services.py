@@ -91,5 +91,5 @@ def get_assistant_list(token):
         return []
 
 
-print(create_ai_analyst("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
+# print(create_ai_analyst("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
 
