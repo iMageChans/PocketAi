@@ -18,7 +18,7 @@ from .serializers import (
     MessageSerializer, MessageCreateSerializer,
     MessageSessionDetailSerializer
 )
-from .services import create_ai_analyst, creat_ai_chat
+from .services import create_ai_analyst, creat_ai_chat, get_assistant_list
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -205,6 +205,11 @@ class MessageViewSet(CreateModelMixin,
             raise serializers.ValidationError(_('指定的会话不存在'))
 
         serializer.save()
+
+    @action(detail=False, methods=['get'])
+    def assistant(self, request):
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        return get_assistant_list(auth_header)
 
     @action(detail=False, methods=['post'])
     def text_message(self, request):
