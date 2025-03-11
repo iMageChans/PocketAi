@@ -314,7 +314,7 @@ class MessageViewSet(CreateModelMixin,
                     category_name=transaction['category'] or "Others",
                     amount=transaction['amount'],
                     transaction_date=utc_now.astimezone(local_tz),
-                    notes=transaction['notes'],
+                    notes=transaction['note'],
                     is_expense=True if transaction['type'] == 'expense' else False,
                 )
                 transaction_ids.append(new_transaction.id)
