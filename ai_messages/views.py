@@ -327,7 +327,7 @@ class MessageViewSet(CreateModelMixin,
         ai_message = Message.objects.create(
             user_id=user_id,
             session=session,
-            content=str(chat),
+            content=chat,
             message_type=Message.TYPE_ASSISTANT,
             is_user=False,
             random_seed=random.randint(1, 90),

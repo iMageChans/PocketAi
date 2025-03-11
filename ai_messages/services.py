@@ -91,6 +91,6 @@ def get_assistant_list(token):
     else:
         return []
 
-chat = creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
-print(isinstance(chat, str))
-print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
+# chat = creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
+# print(isinstance(chat, str))
+# print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
