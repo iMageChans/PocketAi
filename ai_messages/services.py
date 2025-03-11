@@ -51,7 +51,7 @@ def create_ai_analyst(users_input, token, assistant_name="financial_analyst", mo
             parsed_content = raw_content
             return parsed_content
         elif raw_content is None:
-            parsed_content = []
+            parsed_content = {"transactions": []}
             return parsed_content
 
 
@@ -92,5 +92,5 @@ def get_assistant_list(token):
         return []
 
 
-print(creat_ai_chat("早餐20", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
+print(create_ai_analyst("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
 
