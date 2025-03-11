@@ -303,8 +303,6 @@ class MessageViewSet(CreateModelMixin,
         local_tz = pytz.timezone(self.request.remote_user.get('timezone'))
 
         transaction_ids = []
-        print(analyst)
-        print(len(analyst['content']['transactions']))
 
         if len(analyst['content']['transactions']) > 0:
             transactions = analyst['content']['transactions']
