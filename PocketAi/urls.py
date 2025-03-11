@@ -25,4 +25,5 @@ urlpatterns = [
     path('api/', include('assets.urls')),  # 添加资产API路由
     path('api/', include('transactions.urls')),  # 添加交易记录API路由
     path('api/goals/', include('goals.urls')),  # 添加梦想基金API路由
+    path('api/ai_messages/', include('ai_messages.urls')),  # 添加消息会话API路由
 ]

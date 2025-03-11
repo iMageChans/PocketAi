@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'assets.apps.AssetsConfig',
     'transactions.apps.TransactionsConfig',
     'goals.apps.GoalsConfig',
+    'ai_messages.apps.AiMessagesConfig',
     'corsheaders',
 ]
 
