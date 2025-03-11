@@ -321,6 +321,7 @@ class MessageViewSet(CreateModelMixin,
                 transaction_ids.append(new_transaction.id)
 
         chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
+        print(isinstance(chat, str))
         print(chat)
 
         ai_message = Message.objects.create(
