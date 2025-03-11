@@ -35,6 +35,19 @@ class LedgerViewSet(CreateModelMixin,
             raise serializers.ValidationError(_('无法获取用户ID'))
             
         serializer.save(user_id=user_id)
+
+    def get_queryset(self):
+        """获取当前用户的资产"""
+        queryset = super().get_queryset()
+
+        # 从认证后的请求中获取用户ID
+        user_id = None
+        if hasattr(self.request, 'remote_user'):
+            user_id = self.request.remote_user.get('id')
+
+        if user_id:
+            return queryset.filter(user_id=user_id)
+        return queryset.none()
     
     @action(detail=False, methods=['get'])
     def default(self, request):
