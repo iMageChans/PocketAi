@@ -209,7 +209,12 @@ class MessageViewSet(CreateModelMixin,
     @action(detail=False, methods=['get'])
     def assistant(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        return get_assistant_list(auth_header)
+        rsp = get_assistant_list(auth_header)
+        return Response({
+            'code': 200,
+            'msg': "获取成功",
+            'data': rsp['data']
+        })
 
     @action(detail=False, methods=['post'])
     def text_message(self, request):

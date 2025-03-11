@@ -85,3 +85,6 @@ def get_assistant_list(token):
     else:
         return []
 
+
+print(get_assistant_list("33c0e80df373d8d2b0154ce97210950522ff9f31"))
+
