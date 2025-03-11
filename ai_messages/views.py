@@ -334,17 +334,27 @@ class MessageViewSet(CreateModelMixin,
             # 处理交易
             if transactions:
                 for transaction in transactions:
-                    new_transaction = Transaction.objects.create(
-                        user_id=user_id,
-                        ledger_id=ledger_id,
-                        asset_id=asset_id,
-                        category_name=transaction.get('category') or "Others",
-                        amount=transaction.get('amount', 0),
-                        transaction_date=utc_now.astimezone(local_tz),
-                        notes=transaction.get('notes', transaction.get('note', '')),
-                        is_expense=True if transaction.get('type') == 'expense' else False,
-                    )
-                    transaction_ids.append(new_transaction.id)
+                    try:
+                        # 创建交易记录，使用正确的字段名
+                        new_transaction = Transaction.objects.create(
+                            user_id=user_id,
+                            ledger_id=ledger_id,
+                            asset_id=asset_id,
+                            # 根据Transaction模型的实际字段选择以下之一:
+                            # 如果Transaction模型有category字段(ForeignKey):
+                            # category_id=get_category_id(transaction.get('category'), transaction.get('type')),
+                            # 如果Transaction模型直接存储分类名称:
+                            category_id=get_category_id(transaction.get('category'), transaction.get('type')),
+                            amount=transaction.get('amount', 0),
+                            transaction_date=utc_now.astimezone(local_tz),
+                            notes=transaction.get('notes', transaction.get('note', '')),
+                            is_expense=True if transaction.get('type') == 'expense' else False,
+                        )
+                        transaction_ids.append(new_transaction.id)
+                    except Exception as e:
+                        # 记录具体的错误
+                        print(f"创建交易记录失败: {str(e)}")
+                        logger.error(f"创建交易记录失败: {str(e)}")
         except Exception as e:
             # 记录错误但继续执行
             print(f"处理交易时出错: {str(e)}")
@@ -355,7 +365,7 @@ class MessageViewSet(CreateModelMixin,
 
         # 确保chat不为空
         if not chat:
-            chat = _('AI服务未返回有效回复')
+            chat = _('error')
 
         # 创建AI回复消息
         ai_message = Message.objects.create(
@@ -379,3 +389,42 @@ class MessageViewSet(CreateModelMixin,
                 'results': [MessageSerializer(user_message).data, MessageSerializer(ai_message).data]
             }
         })
+
+def get_category_id(category_name, transaction_type):
+    """根据分类名称和交易类型获取分类ID"""
+    from categorization.models import TransactionCategory
+    
+    is_expense = transaction_type == 'expense'
+    
+    try:
+        # 尝试查找匹配的分类
+        category = TransactionCategory.objects.filter(
+            name__icontains=category_name,
+            is_expense=is_expense
+        ).first()
+        
+        if category:
+            return category.id
+        
+        # 如果找不到匹配的分类，使用默认分类
+        default_category = TransactionCategory.objects.filter(
+            is_expense=is_expense,
+            name='Others'
+        ).first()
+        
+        if default_category:
+            return default_category.id
+        
+        # 如果没有默认分类，使用第一个分类
+        first_category = TransactionCategory.objects.filter(
+            is_expense=is_expense
+        ).first()
+        
+        if first_category:
+            return first_category.id
+        
+        # 如果没有找到任何分类，返回None
+        return None
+    except Exception as e:
+        logger.error(f"获取分类ID失败: {str(e)}")
+        return None
