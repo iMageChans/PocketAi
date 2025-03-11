@@ -344,7 +344,7 @@ class MessageViewSet(CreateModelMixin,
                             # 如果Transaction模型有category字段(ForeignKey):
                             # category_id=get_category_id(transaction.get('category'), transaction.get('type')),
                             # 如果Transaction模型直接存储分类名称:
-                            category_id=get_category_id(transaction.get('category'), transaction.get('type')),
+                            category_id=get_category_id(transaction.get('category'), True if transaction.get('type') == 'expense' else False),
                             amount=transaction.get('amount', 0),
                             transaction_date=utc_now.astimezone(local_tz),
                             notes=transaction.get('notes', transaction.get('note', '')),
