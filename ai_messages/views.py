@@ -225,7 +225,7 @@ class MessageViewSet(CreateModelMixin,
         ledger_id = request.data.get('ledger_id')
         asset_id = request.data.get('asset_id', None)
         language = request.data.get('language', self.DEFAULT_LANGUAGE)
-        assistant_name = request.data.get('assistant_name', None)
+        assistant_name = request.data.get('assistant_name', 'Alice')
 
         if not session_id:
             return Response({
