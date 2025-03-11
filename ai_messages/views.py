@@ -299,40 +299,17 @@ class MessageViewSet(CreateModelMixin,
 
         # 调用AI分析服务
         analyst = create_ai_analyst(content, auth_header, model_name=model_name)
+        transactions = analyst.get('transactions', [])
 
         utc_now = timezone.now()
         local_tz = pytz.timezone(self.request.remote_user.get('timezone', 'UTC'))
 
         transaction_ids = []
-        print(analyst)  # 保留调试输出
 
         # 检查analyst的结构并安全地访问transactions
         try:
-            # 如果content是字符串，尝试解析为JSON
-            if isinstance(analyst.get('content'), str):
-                import json
-                try:
-                    content_data = json.loads(analyst['content'])
-                    if isinstance(content_data, dict) and 'transactions' in content_data:
-                        transactions = content_data.get('transactions', [])
-                    else:
-                        transactions = []
-                except json.JSONDecodeError:
-                    # 如果不是有效的JSON，则没有交易
-                    transactions = []
-            # 如果content是字典，直接访问transactions
-            elif isinstance(analyst.get('content'), dict) and 'transactions' in analyst['content']:
-                transactions = analyst['content'].get('transactions', [])
-            # 如果analyst直接包含transactions
-            elif 'transactions' in analyst:
-                transactions = analyst.get('transactions', [])
-            else:
-                transactions = []
-            
-            print(f"找到 {len(transactions)} 个交易")  # 调试输出
-            
             # 处理交易
-            if transactions:
+            if len(transactions) > 0:
                 for transaction in transactions:
                     try:
                         # 创建交易记录，使用正确的字段名

@@ -34,7 +34,7 @@ def create_ai_analyst(users_input, token, assistant_name="financial_analyst", mo
     print(rsp.status_code)
 
     if rsp.status_code == 200:
-        raw_content = rsp.json()['data']
+        raw_content = rsp.json()['data']['content']
         if isinstance(raw_content, str):
             cleaned_content = raw_content.strip()
             # 处理可能的 ```json 标记
