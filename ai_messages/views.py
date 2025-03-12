@@ -226,6 +226,8 @@ class MessageViewSet(CreateModelMixin,
         asset_id = request.data.get('asset_id', None)
         language = request.data.get('language', self.DEFAULT_LANGUAGE)
         assistant_name = request.data.get('assistant_name', 'Alice')
+        file_path = request.data.get('file_path', None)
+        voice_date = request.data.get('voice_date', None)
 
         if not session_id:
             return Response({
@@ -284,6 +286,8 @@ class MessageViewSet(CreateModelMixin,
             message_type=Message.TYPE_USER,
             is_user=True,
             is_voice=is_voice,
+            file_path=file_path,
+            voice_date=voice_date,
         )
 
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')

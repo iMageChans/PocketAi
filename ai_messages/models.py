@@ -90,6 +90,20 @@ class Message(models.Model):
         max_length=50,
         default='random',
     )
+
+    file_path = models.CharField(
+        '语音路径',
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
+    voice_date = models.CharField(
+        '语音秒数',
+        max_length=255,
+        null=True,
+        blank=True
+    )
     
     # 元数据字段
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
