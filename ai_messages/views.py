@@ -19,7 +19,7 @@ from .serializers import (
     MessageSerializer, MessageCreateSerializer,
     MessageSessionDetailSerializer
 )
-from .services import create_ai_analyst, creat_ai_chat, get_assistant_list
+from .services import create_ai_analyst, creat_ai_chat, get_assistant_list, creat_ai_emotion
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -345,11 +345,15 @@ class MessageViewSet(CreateModelMixin,
 
         # 调用AI聊天服务
         chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
-        print(chat)
 
         # 确保chat不为空
         if not chat:
             chat = _('error')
+
+        eomoji = creat_ai_emotion(content, auth_header, model_name=model_name)
+
+        if not eomoji:
+            eomoji = 'random'
 
         # 创建AI回复消息
         ai_message = Message.objects.create(
@@ -359,6 +363,7 @@ class MessageViewSet(CreateModelMixin,
             message_type=Message.TYPE_ASSISTANT,
             is_user=False,
             random=random.randint(1, 90),
+            eomoji=eomoji,
         )
 
         # 如果有交易ID，设置到消息中

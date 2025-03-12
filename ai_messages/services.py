@@ -84,6 +84,36 @@ def creat_ai_chat(users_input, token, assistant_name="Alice", model_name="gpt-3.
             return raw_content
 
 
+def creat_ai_emotion(users_input, token, assistant_name="emotion", model_name="gpt-3.5-turbo", language="en"):
+    params = {
+        "assistant_name": assistant_name,
+        "model_name": model_name,
+        "users_input": users_input,
+        "language": language
+    }
+    rsp = fire(url="api/agent/chat/emotion/", token=token, method="post", params=params)
+
+    if rsp.status_code == 200:
+        raw_content = rsp.json()['data']['content']
+        print(raw_content)
+        if isinstance(raw_content, str):
+            cleaned_content = raw_content.strip()
+            # 处理可能的 ```json 标记
+            if cleaned_content.startswith('```json'):
+                cleaned_content = cleaned_content[7:]  # 移除 ```json
+            if cleaned_content.endswith('```'):
+                cleaned_content = cleaned_content[:-3]  # 移除 ```
+            cleaned_content = cleaned_content.strip()
+
+            parsed_content = cleaned_content
+            return parsed_content
+        elif isinstance(raw_content, dict):
+            parsed_content = raw_content
+            return parsed_content
+        else:
+            return raw_content
+
+
 def get_assistant_list(token):
     rsp = fire(url="api/assistant/", token=token, method="get", params={})
     if rsp.status_code == 200:
@@ -91,6 +121,6 @@ def get_assistant_list(token):
     else:
         return []
 
-# chat = creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
+# chat = creat_ai_emotion("今天购物花了20，有点兴奋", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
 # print(isinstance(chat, str))
 # print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))

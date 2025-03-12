@@ -84,6 +84,12 @@ class Message(models.Model):
         _('是否语音消息'),
         default=False,
     )
+
+    emoji = models.CharField(
+        '表情字段',
+        max_length=50,
+        default='random',
+    )
     
     # 元数据字段
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)

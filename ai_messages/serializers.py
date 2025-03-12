@@ -17,7 +17,7 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = [
             'id', 'session', 'content', 'transaction_ids', 
-            'random', 'message_type', 'message_type_display', 'is_user',
+            'random', 'emoji', 'message_type', 'message_type_display', 'is_user',
             'transactions', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'is_user']
