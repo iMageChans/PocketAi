@@ -216,7 +216,7 @@ class MessageViewSet(CreateModelMixin,
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticatedExternal]
-    pagination_class = StandardResultsSetPagination
+    pagination_class = CustomPagination
 
     # 远程AI服务的URL
     AI_SERVICE_URL = 'https://api.example.com/ai/chat'  # 替换为实际的AI服务URL
