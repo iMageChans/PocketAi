@@ -332,13 +332,13 @@ class MessageViewSet(CreateModelMixin,
         # If message count exceeds 50, return upgrade prompt
         if message_count >= 50:
             return Response({
-                'code': 1000,
+                'code': 598,
                 'msg': _('Unlock unlimited voice & text chat'),
                 'data': {
                     'message_count': message_count,
                     'message_limit': 50
                 }
-            }, status=1000)
+            }, status=598)
         
         # Limit not reached
         return None
