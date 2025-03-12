@@ -384,6 +384,7 @@ class MessageViewSet(CreateModelMixin,
         assistant_name = validated_data.get('assistant_name', 'Alice')
         file_path = validated_data.get('file_path')
         voice_date = validated_data.get('voice_date')
+        user_template_id = validated_data.get('user_template_id', None)
         
         # 获取用户ID
         user_id = None
@@ -479,7 +480,7 @@ class MessageViewSet(CreateModelMixin,
             
             # 调用AI聊天服务
             try:
-                chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
+                chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language, user_template_id=user_template_id)
                 if not chat:
                     chat = _('Sorry, I am currently unable to reply to your message.')
             except Exception as e:

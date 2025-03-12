@@ -117,7 +117,7 @@ def create_ai_analyst(
     token: str, 
     assistant_name: str = "financial_analyst", 
     model_name: str = "gpt-3.5-turbo", 
-    language: str = "en"
+    language: str = "en",
 ) -> Dict[str, Any]:
     """
     调用AI分析服务，分析用户输入中的财务信息
@@ -174,7 +174,8 @@ def create_ai_chat(
     token: str, 
     assistant_name: str = "Alice", 
     model_name: str = "gpt-3.5-turbo", 
-    language: str = "en"
+    language: str = "en",
+    user_template_id: str = None,
 ) -> Optional[str]:
     """
     调用AI聊天服务，获取对用户输入的回复
@@ -193,7 +194,8 @@ def create_ai_chat(
         "assistant_name": assistant_name,
         "model_name": model_name,
         "users_input": users_input,
-        "language": language
+        "language": language,
+        "user_template_id": user_template_id
     }
     
     try:
@@ -293,3 +295,8 @@ def get_assistant_list(token: str) -> list:
 # 修正函数名称，保持向后兼容
 creat_ai_chat = create_ai_chat
 creat_ai_emotion = create_ai_emotion
+
+# 测试代码（已注释）
+# chat = creat_ai_emotion("今天购物花了20，有点兴奋", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
+# print(isinstance(chat, str))
+print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
