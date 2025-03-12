@@ -299,4 +299,4 @@ creat_ai_emotion = create_ai_emotion
 # 测试代码（已注释）
 # chat = creat_ai_emotion("今天购物花了20，有点兴奋", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn")
 # print(isinstance(chat, str))
-print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
+# print(creat_ai_chat("你好", "33c0e80df373d8d2b0154ce97210950522ff9f31", language="zh-cn"))
