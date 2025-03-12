@@ -354,10 +354,10 @@ class MessageViewSet(CreateModelMixin,
         if not chat:
             chat = _('error')
 
-        eomoji = creat_ai_emotion(content, auth_header, model_name=model_name)
+        emoji = creat_ai_emotion(content, auth_header, model_name=model_name)
 
-        if not eomoji:
-            eomoji = 'random'
+        if not emoji:
+            emoji = 'random'
 
         # 创建AI回复消息
         ai_message = Message.objects.create(
@@ -367,7 +367,7 @@ class MessageViewSet(CreateModelMixin,
             message_type=Message.TYPE_ASSISTANT,
             is_user=False,
             random=random.randint(1, 90),
-            eomoji=eomoji,
+            emoji=emoji,
         )
 
         # 如果有交易ID，设置到消息中
