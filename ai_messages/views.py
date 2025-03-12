@@ -23,15 +23,10 @@ from .services import create_ai_analyst, creat_ai_chat, get_assistant_list, crea
 from rest_framework.pagination import PageNumberPagination
 from django.db import transaction as db_transaction
 from utils.viewsets import StandardResponseViewSet
+from utils.pagination import CustomPagination
 
 # 配置日志
 logger = logging.getLogger(__name__)
-
-
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
 
 
 class MessageSessionViewSet(CreateModelMixin,
@@ -44,7 +39,7 @@ class MessageSessionViewSet(CreateModelMixin,
     queryset = MessageSession.objects.all()
     serializer_class = MessageSessionSerializer
     permission_classes = [IsAuthenticatedExternal]
-    pagination_class = StandardResultsSetPagination
+    pagination_class = CustomPagination
 
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
@@ -190,9 +185,17 @@ class MessageSessionViewSet(CreateModelMixin,
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            paginated_response = self.get_paginated_response(serializer.data)
-            # 直接返回分页响应，因为CustomPagination已经格式化了响应
-            return paginated_response
+            # 手动构造符合项目规范的响应格式
+            return Response({
+                'code': 200,
+                'msg': _('获取成功'),
+                'data': {
+                    'count': self.paginator.page.paginator.count,
+                    'next': self.paginator.get_next_link(),
+                    'previous': self.paginator.get_previous_link(),
+                    'results': serializer.data
+                }
+            })
         
         # 如果没有分页，手动格式化响应
         serializer = self.get_serializer(queryset, many=True)
