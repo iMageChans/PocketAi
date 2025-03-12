@@ -22,6 +22,7 @@ from .serializers import (
 from .services import create_ai_analyst, creat_ai_chat, get_assistant_list, creat_ai_emotion
 from rest_framework.pagination import PageNumberPagination
 from django.db import transaction as db_transaction
+from utils.viewsets import StandardResponseViewSet
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class MessageSessionViewSet(CreateModelMixin,
                             UpdateModelMixin,
                             DestroyModelMixin,
                             ListModelMixin,
-                            GenericViewSet):
+                            StandardResponseViewSet):
     """消息会话视图集"""
     queryset = MessageSession.objects.all()
     serializer_class = MessageSessionSerializer
@@ -180,6 +181,26 @@ class MessageSessionViewSet(CreateModelMixin,
                 'msg': _('服务器内部错误'),
                 'data': None
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def list(self, request, *args, **kwargs):
+        """重写列表方法，返回符合项目规范的响应格式"""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # 分页
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            # 直接返回分页响应，因为CustomPagination已经格式化了响应
+            return paginated_response
+        
+        # 如果没有分页，手动格式化响应
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'code': 200,
+            'msg': _('获取成功'),
+            'data': serializer.data
+        })
 
 
 class MessageViewSet(CreateModelMixin,
