@@ -42,7 +42,7 @@ class MessageCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Message
-        fields = ['session', 'content', 'transaction_ids', 'message_type']
+        fields = ['id', 'session', 'content', 'transaction_ids', 'message_type']
     
     def validate_transaction_ids(self, value):
         """验证交易ID列表"""
@@ -94,7 +94,7 @@ class MessageSessionCreateSerializer(serializers.ModelSerializer):
     """创建消息会话的序列化器"""
     class Meta:
         model = MessageSession
-        fields = ['model', 'assistant_name']
+        fields = ['id', 'model', 'assistant_name']
 
 
 class MessageSessionDetailSerializer(MessageSessionSerializer):
