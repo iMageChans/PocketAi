@@ -110,11 +110,6 @@ class ListModelMixin(ResponseMixin, mixins.ListModelMixin):
         
         # 如果模型有user_id字段，则自动过滤
         queryset = self.filter_queryset_by_user(queryset)
-        
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
         return self.get_success_response(
