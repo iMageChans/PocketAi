@@ -332,13 +332,13 @@ class MessageViewSet(CreateModelMixin,
         # If message count exceeds 50, return upgrade prompt
         if message_count >= 50:
             return Response({
-                'code': 403,
+                'code': 1000,
                 'msg': _('Unlock unlimited voice & text chat'),
                 'data': {
                     'message_count': message_count,
                     'message_limit': 50
                 }
-            }, status=status.HTTP_403_FORBIDDEN)
+            }, status=1000)
         
         # Limit not reached
         return None
