@@ -17,12 +17,20 @@ from .models import MessageSession, Message
 from .serializers import (
     MessageSessionSerializer, MessageSessionCreateSerializer,
     MessageSerializer, MessageCreateSerializer,
-    MessageSessionDetailSerializer
+    MessageSessionDetailSerializer, MessageProcessSerializer
 )
 from .services import create_ai_analyst, creat_ai_chat, get_assistant_list, creat_ai_emotion
+from rest_framework.pagination import PageNumberPagination
+from django.db import transaction as db_transaction
 
 # 配置日志
 logger = logging.getLogger(__name__)
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class MessageSessionViewSet(CreateModelMixin,
@@ -35,6 +43,7 @@ class MessageSessionViewSet(CreateModelMixin,
     queryset = MessageSession.objects.all()
     serializer_class = MessageSessionSerializer
     permission_classes = [IsAuthenticatedExternal]
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
@@ -99,11 +108,15 @@ class MessageSessionViewSet(CreateModelMixin,
         session = self.get_object()
         messages = session.messages.all()
 
+        # 确保分页器已初始化
+        paginator = self.pagination_class()
+        paginator.page_size = self.pagination_class.page_size
+        
         # 分页
-        page = self.paginate_queryset(messages)
+        page = paginator.paginate_queryset(messages, request)
         if page is not None:
             serializer = MessageSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            return paginator.get_paginated_response(serializer.data)
 
         serializer = MessageSerializer(messages, many=True)
         return Response({
@@ -111,6 +124,62 @@ class MessageSessionViewSet(CreateModelMixin,
             'msg': _('获取成功'),
             'data': serializer.data
         })
+
+    @action(detail=True, methods=['get'])
+    def sync_history(self, request, pk=None):
+        """同步历史消息
+        
+        通过传入一个message_id，返回该会话中在这个消息之前的所有消息
+        """
+        session = self.get_object()
+        message_id = request.query_params.get('message_id')
+        
+        if not message_id:
+            return Response({
+                'code': 400,
+                'msg': _('缺少message_id参数'),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # 获取指定的消息
+            reference_message = Message.objects.get(id=message_id, session=session)
+            
+            # 获取该消息之前的所有消息
+            messages = session.messages.filter(
+                created_at__lt=reference_message.created_at
+            ).order_by('created_at')
+            
+            # 确保分页器已初始化
+            paginator = self.pagination_class()
+            paginator.page_size = self.pagination_class.page_size
+            
+            # 分页
+            page = paginator.paginate_queryset(messages, request)
+            if page is not None:
+                serializer = MessageSerializer(page, many=True)
+                return paginator.get_paginated_response(serializer.data)
+            
+            serializer = MessageSerializer(messages, many=True)
+            return Response({
+                'code': 200,
+                'msg': _('获取成功'),
+                'data': serializer.data
+            })
+        
+        except Message.DoesNotExist:
+            return Response({
+                'code': 404,
+                'msg': _('指定的消息不存在'),
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"同步历史消息时出错: {str(e)}")
+            return Response({
+                'code': 500,
+                'msg': _('服务器内部错误'),
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MessageViewSet(CreateModelMixin,
@@ -123,6 +192,7 @@ class MessageViewSet(CreateModelMixin,
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticatedExternal]
+    pagination_class = StandardResultsSetPagination
 
     # 远程AI服务的URL
     AI_SERVICE_URL = 'https://api.example.com/ai/chat'  # 替换为实际的AI服务URL
@@ -207,61 +277,102 @@ class MessageViewSet(CreateModelMixin,
             'data': rsp['data']
         })
 
+    def _check_message_limit(self, request):
+        """Check message limit for non-premium users
+        
+        Returns:
+            Response or None: Response object if limit reached, otherwise None
+        """
+        # Check if user is premium
+        is_premium = request.remote_user.get('is_premium')
+        
+        # No limit for premium users
+        if is_premium:
+            return None
+        
+        # Get user ID
+        user_id = request.remote_user.get('id')
+        if not user_id:
+            return Response({
+                'code': 401,
+                'msg': _('Unable to get user ID'),
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Count user messages
+        message_count = Message.objects.filter(
+            user_id=user_id,
+            is_user=True  # Only count user messages
+        ).count()
+        
+        # If message count exceeds 50, return upgrade prompt
+        if message_count >= 50:
+            return Response({
+                'code': 403,
+                'msg': _('Unlock unlimited voice & text chat'),
+                'data': {
+                    'message_count': message_count,
+                    'message_limit': 50
+                }
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Limit not reached
+        return None
+
     @action(detail=False, methods=['post'])
     def text_message(self, request):
-        """处理文字消息"""
+        """Process text message"""
+        # Check message limit
+        limit_response = self._check_message_limit(request)
+        if limit_response:
+            return limit_response
+        
         return self._process_message(request, is_voice=False)
 
     @action(detail=False, methods=['post'])
     def voice_message(self, request):
-        """处理语音消息（已转为文字）"""
+        """Process voice message (converted to text)"""
+        # Check message limit
+        limit_response = self._check_message_limit(request)
+        if limit_response:
+            return limit_response
+        
         return self._process_message(request, is_voice=True)
 
     def _process_message(self, request, is_voice=False):
         """处理消息的通用方法"""
-        # 验证请求数据
-        session_id = request.data.get('session_id')
-        content = request.data.get('content')
-        ledger_id = request.data.get('ledger_id')
-        asset_id = request.data.get('asset_id', None)
-        language = request.data.get('language', self.DEFAULT_LANGUAGE)
-        assistant_name = request.data.get('assistant_name', 'Alice')
-        file_path = request.data.get('file_path', None)
-        voice_date = request.data.get('voice_date', None)
-
-        if not session_id:
+        # 使用序列化器验证请求数据
+        serializer = MessageProcessSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response({
                 'code': 400,
-                'msg': _('缺少会话ID'),
-                'data': None
+                'msg': _('请求参数错误'),
+                'data': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-
-        if not ledger_id:
-            return Response({
-                'code': 400,
-                'msg': _('账本不能为空'),
-                'data': None
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if not content:
-            return Response({
-                'code': 400,
-                'msg': _('消息内容不能为空'),
-                'data': None
-            }, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        # 获取验证后的数据
+        validated_data = serializer.validated_data
+        session_id = validated_data['session_id']
+        content = validated_data['content']
+        ledger_id = validated_data['ledger_id']
+        asset_id = validated_data.get('asset_id')
+        language = validated_data.get('language', self.DEFAULT_LANGUAGE)
+        assistant_name = validated_data.get('assistant_name', 'Alice')
+        file_path = validated_data.get('file_path')
+        voice_date = validated_data.get('voice_date')
+        
         # 获取用户ID
         user_id = None
         if hasattr(request, 'remote_user'):
             user_id = request.remote_user.get('id')
-
+        
         if not user_id:
             return Response({
                 'code': 401,
                 'msg': _('无法获取用户ID'),
                 'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
-
+        
         # 验证会话归属
         try:
             session = MessageSession.objects.get(id=session_id)
@@ -277,43 +388,47 @@ class MessageViewSet(CreateModelMixin,
                 'msg': _('指定的会话不存在'),
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
-
-        # 保存用户消息
-        user_message = Message.objects.create(
-            user_id=user_id,
-            session=session,
-            content=content,
-            message_type=Message.TYPE_USER,
-            is_user=True,
-            is_voice=is_voice,
-            file_path=file_path,
-            voice_date=voice_date,
-        )
-
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-
-        model_name = session.model
-
-        if model_name == 'ChatGPT':
-            model_name = 'gpt-3.5-turbo'
-        elif model_name == 'DeepSeek':
-            model_name = 'deepseek-chat'
-        else:
-            model_name = 'qwen-max'
-
-        # 调用AI分析服务
-        analyst = create_ai_analyst(content, auth_header, model_name=model_name)
-        transactions = analyst.get('transactions', [])
-
-        utc_now = timezone.now()
-        local_tz = pytz.timezone(self.request.remote_user.get('timezone', 'UTC'))
-
-        transaction_ids = []
-
-        # 检查analyst的结构并安全地访问transactions
-        try:
+        
+        # 使用事务确保数据一致性
+        with db_transaction.atomic():
+            # 保存用户消息
+            user_message = Message.objects.create(
+                user_id=user_id,
+                session=session,
+                content=content,
+                message_type=Message.TYPE_USER,
+                is_user=True,
+                is_voice=is_voice,
+                file_path=file_path,
+                voice_date=voice_date,
+            )
+            
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            
+            model_name = session.model
+            
+            if model_name == 'ChatGPT':
+                model_name = 'gpt-3.5-turbo'
+            elif model_name == 'DeepSeek':
+                model_name = 'deepseek-chat'
+            else:
+                model_name = 'qwen-max'
+            
+            # 调用AI分析服务
+            try:
+                analyst = create_ai_analyst(content, auth_header, model_name=model_name)
+                transactions = analyst.get('transactions', [])
+            except Exception as e:
+                logger.error(f"调用AI分析服务失败: {str(e)}")
+                transactions = []
+            
+            utc_now = timezone.now()
+            local_tz = pytz.timezone(self.request.remote_user.get('timezone', 'UTC'))
+            
+            transaction_ids = []
+            
             # 处理交易
-            if len(transactions) > 0:
+            if transactions:
                 for transaction in transactions:
                     try:
                         # 创建交易记录，使用正确的字段名
@@ -323,14 +438,11 @@ class MessageViewSet(CreateModelMixin,
                         else:
                             is_expense = False
                             is_income = True
+                        
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
                             asset_id=asset_id,
-                            # 根据Transaction模型的实际字段选择以下之一:
-                            # 如果Transaction模型有category字段(ForeignKey):
-                            # category_id=get_category_id(transaction.get('category'), transaction.get('type')),
-                            # 如果Transaction模型直接存储分类名称:
                             category_id=get_category_id(transaction.get('category'), is_income),
                             amount=transaction.get('amount', 0),
                             transaction_date=utc_now.astimezone(local_tz),
@@ -339,47 +451,81 @@ class MessageViewSet(CreateModelMixin,
                         )
                         transaction_ids.append(new_transaction.id)
                     except Exception as e:
-                        # 记录具体的错误
-                        print(f"创建交易记录失败: {str(e)}")
                         logger.error(f"创建交易记录失败: {str(e)}")
-        except Exception as e:
-            # 记录错误但继续执行
-            print(f"处理交易时出错: {str(e)}")
-            logger.error(f"处理交易时出错: {str(e)}")
-
-        # 调用AI聊天服务
-        chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
-
-        # 确保chat不为空
-        if not chat:
-            chat = _('error')
-
-        emoji = creat_ai_emotion(content, auth_header, model_name=model_name)
-
-        if not emoji:
-            emoji = 'random'
-
-        # 创建AI回复消息
-        ai_message = Message.objects.create(
-            user_id=user_id,
-            session=session,
-            content=chat,
-            message_type=Message.TYPE_ASSISTANT,
-            is_user=False,
-            random=random.randint(1, 90),
-            emoji=emoji,
-        )
-
-        # 如果有交易ID，设置到消息中
-        if transaction_ids:
-            ai_message.transaction_ids = ','.join(str(id) for id in transaction_ids)
-            ai_message.save()
-
+            
+            # 调用AI聊天服务
+            try:
+                chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language)
+                if not chat:
+                    chat = _('Sorry, I am currently unable to reply to your message.')
+            except Exception as e:
+                logger.error(f"调用AI聊天服务失败: {str(e)}")
+                chat = _('Sorry, the service is temporarily unavailable.')
+            
+            # 获取情感分析
+            try:
+                emoji = creat_ai_emotion(content, auth_header, model_name=model_name)
+                if not emoji:
+                    emoji = 'random'
+            except Exception as e:
+                logger.error(f"调用AI情感分析服务失败: {str(e)}")
+                emoji = 'random'
+            
+            # 创建AI回复消息
+            ai_message = Message.objects.create(
+                user_id=user_id,
+                session=session,
+                content=chat,
+                message_type=Message.TYPE_ASSISTANT,
+                is_user=False,
+                random=random.randint(1, 90),
+                emoji=emoji,
+            )
+            
+            # 如果有交易ID，设置到消息中
+            if transaction_ids:
+                ai_message.transaction_ids = ','.join(str(id) for id in transaction_ids)
+                ai_message.save()
+        
+        # 更新会话的最后更新时间
+        session.save()  # 触发auto_now字段更新
+        
         return Response({
             'code': 200,
-            'msg': '发送成功',
+            'msg': _('发送成功'),
             'data': {
                 'results': [MessageSerializer(user_message).data, MessageSerializer(ai_message).data]
+            }
+        })
+
+    @action(detail=False, methods=['get'])
+    def message_usage(self, request):
+        """Get user's message usage information"""
+        # Get user ID
+        user_id = request.remote_user.get('id')
+        if not user_id:
+            return Response({
+                'code': 401,
+                'msg': _('Unable to get user ID'),
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Check if user is premium
+        is_premium = request.remote_user.get('is_premium')
+        
+        # Count user messages
+        message_count = Message.objects.filter(
+            user_id=user_id,
+            is_user=True  # Only count user messages
+        ).count()
+        
+        return Response({
+            'code': 200,
+            'msg': _('Success'),
+            'data': {
+                'message_count': message_count,
+                'message_limit': None if is_premium else 50,  # No limit for premium users
+                'is_premium': is_premium
             }
         })
 

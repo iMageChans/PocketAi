@@ -102,4 +102,34 @@ class MessageSessionDetailSerializer(MessageSessionSerializer):
     messages = MessageSerializer(many=True, read_only=True)
     
     class Meta(MessageSessionSerializer.Meta):
-        fields = MessageSessionSerializer.Meta.fields + ['messages'] 
+        fields = MessageSessionSerializer.Meta.fields + ['messages']
+
+
+class MessageProcessSerializer(serializers.Serializer):
+    """消息处理序列化器"""
+    session_id = serializers.IntegerField(required=True)
+    content = serializers.CharField(required=True)
+    ledger_id = serializers.IntegerField(required=True)
+    asset_id = serializers.IntegerField(required=False, allow_null=True)
+    language = serializers.CharField(required=False, default='en')
+    assistant_name = serializers.CharField(required=False, default='Alice')
+    file_path = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    voice_date = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    
+    def validate_session_id(self, value):
+        """验证会话ID"""
+        if value <= 0:
+            raise serializers.ValidationError(_("会话ID必须是正整数"))
+        return value
+    
+    def validate_content(self, value):
+        """验证消息内容"""
+        if not value.strip():
+            raise serializers.ValidationError(_("消息内容不能为空"))
+        return value
+    
+    def validate_ledger_id(self, value):
+        """验证账本ID"""
+        if value <= 0:
+            raise serializers.ValidationError(_("账本ID必须是正整数"))
+        return value 

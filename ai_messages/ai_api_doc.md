@@ -16,6 +16,7 @@
   - [获取消息详情](#获取消息详情)
   - [更新消息](#更新消息)
   - [删除消息](#删除消息)
+  - [获取消息使用情况](#获取消息使用情况)
 
 ## 会话管理
 
@@ -273,6 +274,56 @@ GET /api/ai_messages/sessions/{id}/messages/
       "created_at": "2025-03-11T12:00:05Z"
     }
   ]
+}
+```
+
+### 同步历史消息
+
+获取指定消息之前的所有历史消息。
+
+**请求URL**
+
+```
+GET /api/ai_messages/sessions/{id}/sync_history/
+```
+
+**路径参数**
+
+| 参数 | 类型 | 描述 |
+| --- | --- | --- |
+| id | integer | 会话ID |
+
+**查询参数**
+
+| 参数 | 类型 | 必填 | 描述 |
+| --- | --- | --- | --- |
+| message_id | integer | 是 | 参考消息ID，将返回该消息之前的所有消息 |
+| page | integer | 否 | 页码，默认为1 |
+| page_size | integer | 否 | 每页记录数，默认为20，最大为100 |
+
+**响应**
+
+```json
+{
+  "code": 200,
+  "msg": "获取成功",
+  "data": {
+    "count": 50,
+    "next": "http://example.com/api/ai_messages/sessions/1/sync_history/?message_id=100&page=2",
+    "previous": null,
+    "results": [
+      {
+        "id": 1,
+        "session_id": 1,
+        "content": "你好",
+        "message_type": "user",
+        "is_user": true,
+        "is_voice": false,
+        "transaction_ids": "0",
+        "created_at": "2025-03-11T12:00:00Z"
+      }
+    ]
+  }
 }
 ```
 
@@ -560,6 +611,38 @@ DELETE /api/ai_messages/messages/{id}/
   "data": null
 }
 ```
+
+### Get Message Usage
+
+Get user's message usage information, including sent message count and limits.
+
+**Request URL**
+
+```
+GET /api/ai_messages/messages/message_usage/
+```
+
+**Response**
+
+```json
+{
+  "code": 200,
+  "msg": "Success",
+  "data": {
+    "message_count": 35,
+    "message_limit": 50,
+    "is_premium": false
+  }
+}
+```
+
+**Response Fields**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| message_count | integer | Number of messages sent by the user |
+| message_limit | integer/null | Message count limit, null for premium users (unlimited) |
+| is_premium | boolean | Whether the user is a premium user |
 
 ## 错误码说明
 
