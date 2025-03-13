@@ -10,6 +10,7 @@ class TokenAuthMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self.auth_api_url = f"{settings.BASE_URL.rstrip('/')}/users/api/users/me/"
+        print(self.auth_api_url)
         self.exempt_paths = [
             '/users/api/auth/login/',
             '/admin/',
