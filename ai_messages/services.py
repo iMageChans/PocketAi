@@ -9,7 +9,7 @@ from requests.exceptions import RequestException
 logger = logging.getLogger(__name__)
 
 # 基础URL配置
-BASE_URL = 'https://users.pulseheath.com/agent/'
+BASE_URL = 'http://agent-service:8004/agent/'
 # BASE_URL = 'http://127.0.0.1:8000/'
 
 
