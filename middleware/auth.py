@@ -44,7 +44,6 @@ class TokenAuthMiddleware:
 
         session = requests.Session()
         retries = Retry(total=2, backoff_factor=0.1)
-        session.mount('http2://', HTTPAdapter(max_retries=retries))
         session.mount('https://', HTTPAdapter(max_retries=retries))
 
         try:
@@ -54,6 +53,8 @@ class TokenAuthMiddleware:
                 headers={'Authorization': token},  # 关键修改点
                 timeout=3
             )
+            print(response.status_code)
+            print(response.json())
             response.raise_for_status()
             return response.json().get('data', {})
         except requests.HTTPError as e:
