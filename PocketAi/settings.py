@@ -169,11 +169,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 # 静态文件配置
-STATIC_URL = '/static/'
+STATIC_URL = '/static/pocket-service/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # 媒体文件配置
-MEDIA_URL = '/media/'
+MEDIA_URL = '/media/pocket-service/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
