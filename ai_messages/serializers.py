@@ -115,7 +115,7 @@ class MessageProcessSerializer(serializers.Serializer):
     assistant_name = serializers.CharField(required=False, default='Alice')
     file_path = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     voice_date = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    user_template_id = serializers.CharField(required=False, help_text="模板id")
+    user_template_id = serializers.CharField(help_text="模板id")
     
     def validate_session_id(self, value):
         """验证会话ID"""
