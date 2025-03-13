@@ -1,4 +1,5 @@
 # middleware/auth.py
+import re
 import requests
 from django.conf import settings
 from django.http import JsonResponse
@@ -12,9 +13,13 @@ class TokenAuthMiddleware:
         self.auth_api_url = f"{settings.BASE_URL.rstrip('/')}/users/api/users/me/"
         print(self.auth_api_url)
         self.exempt_paths = [
-            '/users/api/auth/login/',
-            '/admin/',
-            '/openapi.json'
+            re.compile(r'^/users/api/auth/login/?$'),
+            re.compile(r'^/admin/'),
+            re.compile(r'^/openapi\.json$'),
+            re.compile(r'^/static/'),
+            re.compile(r'^/media/'),
+            re.compile(r'^/swagger/'),
+            re.compile(r'^/redoc/')
         ]
 
     def __call__(self, request):
@@ -40,6 +45,7 @@ class TokenAuthMiddleware:
 
         session = requests.Session()
         retries = Retry(total=2, backoff_factor=0.1)
+        session.mount('http2://', HTTPAdapter(max_retries=retries))
         session.mount('https://', HTTPAdapter(max_retries=retries))
 
         try:
