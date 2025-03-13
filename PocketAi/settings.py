@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',
     'categorization.apps.CategorizationConfig',
     'ledger.apps.LedgerConfig',
     'assets.apps.AssetsConfig',
