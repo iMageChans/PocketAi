@@ -28,9 +28,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost',
                  '127.0.0.1',
-                 'users.pulseheath.com']
+                 'pocket.pulseheath.com']
 
-BASE_URL = 'https://users.pulseheath.com/'
+
+BASE_URL = 'http://users-service:8001'
 TOKEN_COOKIE_NAME = 'joker'
 
 
