@@ -1,7 +1,5 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-import uuid
-import json
 
 
 # Create your models here.
@@ -25,8 +23,8 @@ class MessageSession(models.Model):
     def __str__(self):
         """字符串表示"""
         if self.assistant_name:
-            return f"{self.assistant_name} - {self.user_id} ({self.uuid})"
-        return f"{self.model} - {self.user_id} ({self.uuid})"
+            return f"{self.assistant_name} - {self.user_id}"
+        return f"{self.model} - {self.user_id}"
 
     @property
     def session_id(self):
@@ -55,14 +53,6 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name='messages',
         verbose_name=_('所属会话')
-    )
-
-    session_uuid = models.UUIDField(
-        _('会话UUID'),
-        null=True,
-        blank=True,
-        db_index=True,
-        help_text=_('会话的UUID标识符')
     )
 
     user_id = models.IntegerField(_('用户ID'), db_index=True, blank=True, null=True)

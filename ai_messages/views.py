@@ -35,7 +35,7 @@ class MessageSessionViewSet(CreateModelMixin,
     serializer_class = MessageSessionSerializer
     permission_classes = [IsAuthenticatedExternal]
     pagination_class = CustomPagination
-    lookup_field = 'uuid'  # 使用UUID作为查找字段
+
 
     # 添加一个额外的路由，支持通过整数ID查找会话
     @action(detail=True, methods=['get'], url_path='by-id/(?P<id>\d+)')
