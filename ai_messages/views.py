@@ -1,14 +1,10 @@
-import random
-import json
-
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
 from django.utils.translation import gettext_lazy as _
 from django.http import Http404
 
-import pytz
-from django.utils import timezone
+from datetime import datetime
 
 from transactions.models import Transaction
 from utils.permissions import IsAuthenticatedExternal
@@ -19,8 +15,7 @@ from .serializers import (
     MessageSerializer, MessageCreateSerializer,
     MessageSessionDetailSerializer, MessageProcessSerializer
 )
-from .services import create_ai_analyst, creat_ai_chat, get_assistant_list, creat_ai_emotion
-from rest_framework.pagination import PageNumberPagination
+from .services import creat_ai_chat, get_assistant_list
 from django.db import transaction as db_transaction
 from utils.viewsets import StandardResponseViewSet
 from utils.pagination import CustomPagination
@@ -40,6 +35,24 @@ class MessageSessionViewSet(CreateModelMixin,
     serializer_class = MessageSessionSerializer
     permission_classes = [IsAuthenticatedExternal]
     pagination_class = CustomPagination
+    lookup_field = 'uuid'  # 使用UUID作为查找字段
+
+    # 添加一个额外的路由，支持通过整数ID查找会话
+    @action(detail=True, methods=['get'], url_path='by-id/(?P<id>\d+)')
+    def get_by_id(self, request, id=None):
+        """通过整数ID获取会话"""
+        try:
+            session = MessageSession.objects.get(id=id)
+
+            # 检查权限
+            user_id = request.remote_user.get('id')
+            if session.user_id != user_id:
+                raise Http404(_("没有找到符合条件的会话"))
+
+            serializer = self.get_serializer(session)
+            return self.get_success_response(data=serializer.data)
+        except MessageSession.DoesNotExist:
+            raise Http404(_("没有找到符合条件的会话"))
 
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
@@ -107,7 +120,7 @@ class MessageSessionViewSet(CreateModelMixin,
         # 确保分页器已初始化
         paginator = self.pagination_class()
         paginator.page_size = self.pagination_class.page_size
-        
+
         # 分页
         page = paginator.paginate_queryset(messages, request)
         if page is not None:
@@ -124,45 +137,45 @@ class MessageSessionViewSet(CreateModelMixin,
     @action(detail=True, methods=['get'])
     def sync_history(self, request, pk=None):
         """同步历史消息
-        
+
         通过传入一个message_id，返回该会话中在这个消息之前的所有消息
         """
         session = self.get_object()
         message_id = request.query_params.get('message_id')
-        
+
         if not message_id:
             return Response({
                 'code': 400,
                 'msg': _('缺少message_id参数'),
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             # 获取指定的消息
             reference_message = Message.objects.get(id=message_id, session=session)
-            
+
             # 获取该消息之前的所有消息
             messages = session.messages.filter(
                 created_at__lt=reference_message.created_at
             ).order_by('created_at')
-            
+
             # 确保分页器已初始化
             paginator = self.pagination_class()
             paginator.page_size = self.pagination_class.page_size
-            
+
             # 分页
             page = paginator.paginate_queryset(messages, request)
             if page is not None:
                 serializer = MessageSerializer(page, many=True)
                 return paginator.get_paginated_response(serializer.data)
-            
+
             serializer = MessageSerializer(messages, many=True)
             return Response({
                 'code': 200,
                 'msg': _('获取成功'),
                 'data': serializer.data
             })
-        
+
         except Message.DoesNotExist:
             return Response({
                 'code': 404,
@@ -180,7 +193,7 @@ class MessageSessionViewSet(CreateModelMixin,
     def list(self, request, *args, **kwargs):
         """重写列表方法，返回符合项目规范的响应格式"""
         queryset = self.filter_queryset(self.get_queryset())
-        
+
         # 分页
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -196,7 +209,7 @@ class MessageSessionViewSet(CreateModelMixin,
                     'results': serializer.data
                 }
             })
-        
+
         # 如果没有分页，手动格式化响应
         serializer = self.get_serializer(queryset, many=True)
         return Response({
@@ -303,17 +316,17 @@ class MessageViewSet(CreateModelMixin,
 
     def _check_message_limit(self, request):
         """Check message limit for non-premium users
-        
+
         Returns:
             Response or None: Response object if limit reached, otherwise None
         """
         # Check if user is premium
         is_premium = request.remote_user.get('is_premium')
-        
+
         # No limit for premium users
         if is_premium:
             return None
-        
+
         # Get user ID
         user_id = request.remote_user.get('id')
         if not user_id:
@@ -322,13 +335,13 @@ class MessageViewSet(CreateModelMixin,
                 'msg': _('Unable to get user ID'),
                 'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         # Count user messages
         message_count = Message.objects.filter(
             user_id=user_id,
             is_user=True  # Only count user messages
         ).count()
-        
+
         # If message count exceeds 50, return upgrade prompt
         if message_count >= 50:
             return Response({
@@ -339,19 +352,49 @@ class MessageViewSet(CreateModelMixin,
                     'message_limit': 50
                 }
             }, status=598)
-        
+
         # Limit not reached
         return None
 
     @action(detail=False, methods=['post'])
     def text_message(self, request):
-        """Process text message"""
-        # Check message limit
+        """处理文字消息"""
+        # 检查用户是否为付费用户
+        is_premium = request.remote_user.get('is_premium')
+
+        # 如果不是付费用户，检查消息数量限制
         limit_response = self._check_message_limit(request)
         if limit_response:
             return limit_response
-        
-        return self._process_message(request, is_voice=False)
+
+        serializer = MessageProcessSerializer(data=request.data)
+        if not serializer.is_valid():
+            return self.get_error_response(
+                msg=_('请求参数错误'),
+                data=serializer.errors,
+                code=400,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 获取会话ID或UUID
+        session_id = serializer.validated_data.get('session_id')
+        session_uuid = serializer.validated_data.get('session_uuid')
+
+        # 查找会话
+        try:
+            if session_uuid:
+                session = MessageSession.objects.get(uuid=session_uuid)
+            else:
+                session = MessageSession.objects.get(id=session_id)
+        except MessageSession.DoesNotExist:
+            return self.get_error_response(
+                msg=_('会话不存在'),
+                code=404,
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        # 其余处理逻辑保持不变
+        # ...
 
     @action(detail=False, methods=['post'])
     def voice_message(self, request):
@@ -360,7 +403,7 @@ class MessageViewSet(CreateModelMixin,
         limit_response = self._check_message_limit(request)
         if limit_response:
             return limit_response
-        
+
         return self._process_message(request, is_voice=True)
 
     def _process_message(self, request, is_voice=False):
@@ -373,7 +416,7 @@ class MessageViewSet(CreateModelMixin,
                 'msg': _('请求参数错误'),
                 'data': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # 获取验证后的数据
         validated_data = serializer.validated_data
         session_id = validated_data['session_id']
@@ -385,19 +428,19 @@ class MessageViewSet(CreateModelMixin,
         file_path = validated_data.get('file_path')
         voice_date = validated_data.get('voice_date')
         user_template_id = validated_data.get('user_template_id', None)
-        
+
         # 获取用户ID
         user_id = None
         if hasattr(request, 'remote_user'):
             user_id = request.remote_user.get('id')
-        
+
         if not user_id:
             return Response({
                 'code': 401,
                 'msg': _('无法获取用户ID'),
                 'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         # 验证会话归属
         try:
             session = MessageSession.objects.get(id=session_id)
@@ -413,7 +456,7 @@ class MessageViewSet(CreateModelMixin,
                 'msg': _('指定的会话不存在'),
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
-        
+
         # 使用事务确保数据一致性
         with db_transaction.atomic():
             # 保存用户消息
@@ -427,31 +470,23 @@ class MessageViewSet(CreateModelMixin,
                 file_path=file_path,
                 voice_date=voice_date,
             )
-            
+
             auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-            
+
             model_name = session.model
-            
+
             if model_name == 'ChatGPT':
                 model_name = 'gpt-3.5-turbo'
             elif model_name == 'DeepSeek':
                 model_name = 'deepseek-chat'
             else:
                 model_name = 'qwen-max'
-            
-            # 调用AI分析服务
-            try:
-                analyst = create_ai_analyst(content, auth_header, model_name=model_name)
-                transactions = analyst.get('transactions', [])
-            except Exception as e:
-                logger.error(f"调用AI分析服务失败: {str(e)}")
-                transactions = []
-            
-            utc_now = timezone.now()
-            local_tz = pytz.timezone(self.request.remote_user.get('timezone', 'UTC'))
-            
+
+            bot = creat_ai_chat(content, auth_header, model_name=model_name)
+            transactions = bot['transactions']
+
             transaction_ids = []
-            
+
             # 处理交易
             if transactions:
                 for transaction in transactions:
@@ -463,58 +498,40 @@ class MessageViewSet(CreateModelMixin,
                         else:
                             is_expense = False
                             is_income = True
-                        
+                        transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
                             asset_id=asset_id,
                             category_id=get_category_id(transaction.get('category'), is_income),
                             amount=transaction.get('amount', 0),
-                            transaction_date=utc_now.astimezone(local_tz),
-                            notes=transaction.get('notes', transaction.get('note', '')),
+                            transaction_date=transaction_date,
+                            notes=transaction['note'],
                             is_expense=is_expense,
                         )
                         transaction_ids.append(new_transaction.id)
                     except Exception as e:
                         logger.error(f"创建交易记录失败: {str(e)}")
-            
-            # 调用AI聊天服务
-            try:
-                chat = creat_ai_chat(content, auth_header, assistant_name, model_name=model_name, language=language, user_template_id=user_template_id)
-                if not chat:
-                    chat = _('Sorry, I am currently unable to reply to your message.')
-            except Exception as e:
-                logger.error(f"调用AI聊天服务失败: {str(e)}")
-                chat = _('Sorry, the service is temporarily unavailable.')
-            
-            # 获取情感分析
-            try:
-                emoji = creat_ai_emotion(content, auth_header, model_name=model_name)
-                if not emoji:
-                    emoji = 'random'
-            except Exception as e:
-                logger.error(f"调用AI情感分析服务失败: {str(e)}")
-                emoji = 'random'
-            
+
             # 创建AI回复消息
             ai_message = Message.objects.create(
                 user_id=user_id,
                 session=session,
-                content=chat,
+                content=bot['ai_output'],
                 message_type=Message.TYPE_ASSISTANT,
                 is_user=False,
-                random=random.randint(1, 90),
-                emoji=emoji,
+                random=bot['random'],
+                emoji=bot['emoji'],
             )
-            
+
             # 如果有交易ID，设置到消息中
             if transaction_ids:
                 ai_message.transaction_ids = ','.join(str(id) for id in transaction_ids)
                 ai_message.save()
-        
+
         # 更新会话的最后更新时间
         session.save()  # 触发auto_now字段更新
-        
+
         return Response({
             'code': 200,
             'msg': _('发送成功'),
@@ -534,16 +551,16 @@ class MessageViewSet(CreateModelMixin,
                 'msg': _('Unable to get user ID'),
                 'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
-        
+
         # Check if user is premium
         is_premium = request.remote_user.get('is_premium')
-        
+
         # Count user messages
         message_count = Message.objects.filter(
             user_id=user_id,
             is_user=True  # Only count user messages
         ).count()
-        
+
         return Response({
             'code': 200,
             'msg': _('Success'),
@@ -554,39 +571,40 @@ class MessageViewSet(CreateModelMixin,
             }
         })
 
+
 def get_category_id(category_name, transaction_type):
     """根据分类名称和交易类型获取分类ID"""
     from categorization.models import TransactionCategory
-    
+
     is_income = transaction_type
-    
+
     try:
         # 尝试查找匹配的分类
         category = TransactionCategory.objects.filter(
             name__icontains=category_name,
             is_income=is_income
         ).first()
-        
+
         if category:
             return category.id
-        
+
         # 如果找不到匹配的分类，使用默认分类
         default_category = TransactionCategory.objects.filter(
             is_income=is_income,
             name='Others'
         ).first()
-        
+
         if default_category:
             return default_category.id
-        
+
         # 如果没有默认分类，使用第一个分类
         first_category = TransactionCategory.objects.filter(
             is_income=is_income
         ).first()
-        
+
         if first_category:
             return first_category.id
-        
+
         # 如果没有找到任何分类，返回None
         return None
     except Exception as e:
