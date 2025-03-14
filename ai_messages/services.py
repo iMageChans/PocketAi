@@ -123,6 +123,3 @@ def get_assistant_list(token: str) -> list:
 
 # 修正函数名称，保持向后兼容
 creat_ai_chat = create_ai_chat
-
-# 测试代码（已注释）
-chat = creat_ai_chat("今天购物花了20，有点兴奋", "7828c2c58347795aba866a30a3737cb79552d663", language="zh-cn")
