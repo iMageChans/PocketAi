@@ -378,14 +378,10 @@ class MessageViewSet(CreateModelMixin,
 
         # 获取会话ID或UUID
         session_id = serializer.validated_data.get('session_id')
-        session_uuid = serializer.validated_data.get('session_uuid')
 
         # 查找会话
         try:
-            if session_uuid:
-                session = MessageSession.objects.get(uuid=session_uuid)
-            else:
-                session = MessageSession.objects.get(id=session_id)
+            session = MessageSession.objects.get(id=session_id)
         except MessageSession.DoesNotExist:
             return self.get_error_response(
                 msg=_('会话不存在'),

@@ -9,15 +9,6 @@ import json
 class MessageSession(models.Model):
     """消息会话模型"""
     # 保留原有的自增ID作为主键
-    # 添加UUID字段作为新的唯一标识符
-    uuid = models.UUIDField(
-        _('UUID'),
-        default=uuid.uuid4,
-        editable=False,
-        unique=True,
-        db_index=True,
-        help_text=_('会话的唯一标识符')
-    )
     user_id = models.IntegerField(_('用户ID'), db_index=True)
     model = models.CharField(_('模型名称'), max_length=255)
     assistant_name = models.CharField(_('助手名称'), max_length=100, blank=True, null=True)

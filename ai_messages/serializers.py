@@ -16,11 +16,11 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = [
-            'id', 'session', 'session_uuid', 'content', 'transaction_ids',
+            'id', 'session', 'content', 'transaction_ids',
             'random', 'emoji', 'file_path', 'voice_date', 'message_type', 'message_type_display', 'is_user',
             'transactions', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'session_uuid', 'created_at', 'updated_at', 'is_user']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'is_user']
 
     def get_transactions(self, obj):
         """获取关联的交易记录详情"""
@@ -84,10 +84,10 @@ class MessageSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageSession
         fields = [
-            'id', 'uuid', 'user_id', 'model', 'assistant_name',
+            'id', 'user_id', 'model', 'assistant_name',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'uuid', 'user_id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user_id', 'created_at', 'updated_at']
 
 
 class MessageSessionCreateSerializer(serializers.ModelSerializer):
@@ -109,7 +109,6 @@ class MessageSessionDetailSerializer(MessageSessionSerializer):
 class MessageProcessSerializer(serializers.Serializer):
     """消息处理序列化器"""
     session_id = serializers.IntegerField(required=False)
-    session_uuid = serializers.UUIDField(required=False)
     content = serializers.CharField(required=True)
     ledger_id = serializers.IntegerField(required=True)
     asset_id = serializers.IntegerField(required=False, allow_null=True)
@@ -121,8 +120,8 @@ class MessageProcessSerializer(serializers.Serializer):
 
     def validate(self, data):
         """验证至少提供了session_id或session_uuid之一"""
-        if 'session_id' not in data and 'session_uuid' not in data:
-            raise serializers.ValidationError(_("必须提供会话ID或会话UUID"))
+        if 'session_id' not in data:
+            raise serializers.ValidationError(_("必须提供会话ID或会话ID"))
         return data
 
     def validate_session_id(self, value):
