@@ -138,10 +138,6 @@ class Message(models.Model):
         return f"{prefix}: {self.content[:30]}..."
 
     def save(self, *args, **kwargs):
-        """重写保存方法，同步session_uuid和is_user字段"""
-        # 同步session_uuid
-        if self.session and not self.session_uuid:
-            self.session_uuid = self.session.uuid
 
         # 同步is_user和message_type
         self.is_user = (self.message_type == self.TYPE_USER)
