@@ -100,4 +100,22 @@ class CategorySummarySerializer(serializers.Serializer):
     category_name = serializers.CharField()
     total_amount = serializers.DecimalField(max_digits=20, decimal_places=2)
     transaction_count = serializers.IntegerField()
-    is_income = serializers.BooleanField() 
+    is_income = serializers.BooleanField()
+
+
+class CategoryMonthlyStatSerializer(serializers.Serializer):
+    """分类月度统计序列化器"""
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    is_income = serializers.BooleanField()
+    total_amount = serializers.DecimalField(max_digits=15, decimal_places=2)
+    transaction_count = serializers.IntegerField()
+
+class MonthlyStatSerializer(serializers.Serializer):
+    """月度统计序列化器"""
+    month = serializers.CharField()
+    month_timestamp = serializers.IntegerField()
+    categories = CategoryMonthlyStatSerializer(many=True)
+    total_expense = serializers.DecimalField(max_digits=15, decimal_places=2)
+    total_income = serializers.DecimalField(max_digits=15, decimal_places=2)
+    net_amount = serializers.DecimalField(max_digits=15, decimal_places=2)
