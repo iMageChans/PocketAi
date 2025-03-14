@@ -367,30 +367,7 @@ class MessageViewSet(CreateModelMixin,
         if limit_response:
             return limit_response
 
-        serializer = MessageProcessSerializer(data=request.data)
-        if not serializer.is_valid():
-            return self.get_error_response(
-                msg=_('请求参数错误'),
-                data=serializer.errors,
-                code=400,
-                status_code=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 获取会话ID或UUID
-        session_id = serializer.validated_data.get('session_id')
-
-        # 查找会话
-        try:
-            session = MessageSession.objects.get(id=session_id)
-        except MessageSession.DoesNotExist:
-            return self.get_error_response(
-                msg=_('会话不存在'),
-                code=404,
-                status_code=status.HTTP_404_NOT_FOUND
-            )
-
-        # 其余处理逻辑保持不变
-        # ...
+        return self._process_message(request, is_voice=False)
 
     @action(detail=False, methods=['post'])
     def voice_message(self, request):
