@@ -32,7 +32,6 @@ def fire(url: str, params: Dict[str, Any], token: str, method: str = "post") -> 
     }
 
     full_url = f"{BASE_URL}{url}"
-    print(f"full_url: {full_url}")
 
     try:
         if method.lower() == "post":
@@ -121,6 +120,4 @@ def get_assistant_list(token: str) -> list:
         logger.error(f"获取助手列表失败: {str(e)}")
         return []
 
-
-# 修正函数名称，保持向后兼容
 creat_ai_chat = create_ai_chat

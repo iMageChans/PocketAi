@@ -456,6 +456,13 @@ class MessageViewSet(CreateModelMixin,
                 model_name = 'qwen-max'
 
             bot = creat_ai_chat(content, auth_header, model_name=model_name)
+            if bot is None:
+                return Response({
+                'code': 400,
+                'msg': _('bot is None'),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
             transactions = bot['transactions']
 
             transaction_ids = []
