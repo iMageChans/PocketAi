@@ -90,6 +90,7 @@ def create_ai_chat(
     try:
         response = fire(url="api/agent/chat/", token=token, method="post", params=params)
         logger.info(f"AI聊天服务响应状态码: {response.status_code}")
+        print(response.json())
         return response.json()['data']['content']
     except Exception as e:
         logger.error(f"调用AI聊天服务失败: {str(e)}")
