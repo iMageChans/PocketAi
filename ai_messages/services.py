@@ -9,8 +9,8 @@ from requests.exceptions import RequestException
 logger = logging.getLogger(__name__)
 
 # 基础URL配置
-# BASE_URL = 'https://users.pulseheath.com/agent/'
-BASE_URL = 'http://127.0.0.1:8000/'
+BASE_URL = 'https://pocket.pulseheath.com/agent/'
+# BASE_URL = 'http://127.0.0.1:8000/'
 
 
 def fire(url: str, params: Dict[str, Any], token: str, method: str = "post") -> requests.Response:
