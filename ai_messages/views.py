@@ -453,7 +453,7 @@ class MessageViewSet(CreateModelMixin,
             elif model_name == 'DeepSeek':
                 model_name = 'deepseek-chat'
             else:
-                model_name = 'qwq-plus'
+                model_name = 'qwen-max'
 
             bot = creat_ai_chat(content, auth_header, model_name=model_name)
             if bot is None:
