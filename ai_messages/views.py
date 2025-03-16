@@ -493,11 +493,16 @@ class MessageViewSet(CreateModelMixin,
                     except Exception as e:
                         logger.error(f"创建交易记录失败: {str(e)}")
 
+            if "ai_output" in bot:
+                content = bot['ai_output']
+            else:
+                content = bot['en']
+
             # 创建AI回复消息
             ai_message = Message.objects.create(
                 user_id=user_id,
                 session=session,
-                content=bot['ai_output'],
+                content=content,
                 message_type=Message.TYPE_ASSISTANT,
                 is_user=False,
                 random=bot['random'],
