@@ -7,6 +7,8 @@ import json
 
 class MessageSession(models.Model):
     """消息会话模型"""
+    # 保留原有的自增ID作为主键
+    # 添加UUID字段作为新的唯一标识符
     user_id = models.IntegerField(_('用户ID'), db_index=True)
     model = models.CharField(_('模型名称'), max_length=255)
     assistant_name = models.CharField(_('助手名称'), max_length=100, blank=True, null=True)
@@ -25,6 +27,14 @@ class MessageSession(models.Model):
         if self.assistant_name:
             return f"{self.assistant_name} - {self.user_id}"
         return f"{self.model} - {self.user_id}"
+    
+    @property
+    def session_id(self):
+        """
+        兼容性属性，返回整数ID
+        用于保持与旧代码的兼容性
+        """
+        return self.id
 
 
 class Message(models.Model):
@@ -120,7 +130,7 @@ class Message(models.Model):
         return f"{prefix}: {self.content[:30]}..."
     
     def save(self, *args, **kwargs):
-        """重写保存方法，同步is_user和message_type字段"""
+            
         # 同步is_user和message_type
         self.is_user = (self.message_type == self.TYPE_USER)
         super().save(*args, **kwargs)

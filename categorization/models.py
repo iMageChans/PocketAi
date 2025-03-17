@@ -25,10 +25,11 @@ class LedgerCategory(models.Model):
 class AssetCategory(models.Model):
     """资产分类模型"""
     CATEGORY_TYPE_CHOICES = (
-        ('debit', _('借记卡/现金')),
-        ('credit', _('信用卡')),
-        ('borrow_lend', _('借贷')),
-        ('investment', _('投资')),
+        ('借记卡/现金', _('借记卡/现金')),
+        ('信用卡', _('信用卡')),
+        ('借贷', _('借贷')),
+        ('投资', _('投资')),
+        ('网络', _('网络')),
     )
     
     name = models.CharField(_('名称'), max_length=50)

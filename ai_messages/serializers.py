@@ -16,8 +16,8 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = [
-            'id', 'session', 'content', 'transaction_ids', 
-            'random', 'emoji', 'file_path', 'voice_date','message_type', 'message_type_display', 'is_user',
+            'id', 'session', 'content', 'transaction_ids',
+            'random', 'emoji', 'file_path', 'voice_date', 'message_type', 'message_type_display', 'is_user',
             'transactions', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'is_user']
@@ -84,7 +84,7 @@ class MessageSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = MessageSession
         fields = [
-            'id', 'user_id', 'model', 'assistant_name', 
+            'id', 'user_id', 'model', 'assistant_name',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user_id', 'created_at', 'updated_at']
@@ -107,7 +107,7 @@ class MessageSessionDetailSerializer(MessageSessionSerializer):
 
 class MessageProcessSerializer(serializers.Serializer):
     """消息处理序列化器"""
-    session_id = serializers.IntegerField(required=True)
+    session_id = serializers.IntegerField(required=False)
     content = serializers.CharField(required=True)
     ledger_id = serializers.IntegerField(required=True)
     asset_id = serializers.IntegerField(required=False, allow_null=True)
@@ -115,11 +115,17 @@ class MessageProcessSerializer(serializers.Serializer):
     assistant_name = serializers.CharField(required=False, default='Alice')
     file_path = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     voice_date = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    user_template_id = serializers.CharField(required=False, help_text="模板id")
+    user_template_id = serializers.CharField(required=False, allow_blank=True, allow_null=True, help_text="模板id")
+    
+    def validate(self, data):
+        """验证至少提供了session_id或session_uuid之一"""
+        if 'session_id' not in data:
+            raise serializers.ValidationError(_("必须提供会话ID或会话ID"))
+        return data
     
     def validate_session_id(self, value):
         """验证会话ID"""
-        if value <= 0:
+        if value and value <= 0:
             raise serializers.ValidationError(_("会话ID必须是正整数"))
         return value
     

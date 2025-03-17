@@ -15,7 +15,8 @@ from utils.mixins import *
 from .models import Transaction
 from .serializers import (
     TransactionSerializer, TransactionCreateSerializer,
-    TransactionSummarySerializer, CategorySummarySerializer
+    TransactionSummarySerializer, CategorySummarySerializer,
+    MonthlyStatSerializer
 )
 
 
@@ -352,6 +353,127 @@ class TransactionViewSet(CreateModelMixin,
                 'navigation': navigation_info
             },
             msg='获取成功'
+        )
+
+    @action(detail=False, methods=['get'])
+    def asset_monthly_categories(self, request):
+        """根据资产ID查询每个月按分类统计的数据"""
+        # 获取资产ID
+        asset_id = request.query_params.get('asset_id')
+        if not asset_id:
+            return self.get_error_response(
+                msg=_('缺少资产ID参数'),
+                code=400,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 获取用户ID
+        user_id = None
+        if hasattr(request, 'remote_user'):
+            user_id = request.remote_user.get('id')
+        
+        if not user_id:
+            return self.get_error_response(
+                msg=_('无法获取用户ID'),
+                code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 基础查询集
+        queryset = Transaction.objects.filter(
+            user_id=user_id,
+            asset_id=asset_id,
+            include_in_stats=True
+        )
+        
+        # 获取时间范围参数
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if start_date:
+            try:
+                start_date = datetime.fromtimestamp(int(start_date), tz=pytz.UTC)
+                queryset = queryset.filter(transaction_date__gte=start_date)
+            except (ValueError, TypeError):
+                pass
+        
+        if end_date:
+            try:
+                end_date = datetime.fromtimestamp(int(end_date), tz=pytz.UTC)
+                queryset = queryset.filter(transaction_date__lte=end_date)
+            except (ValueError, TypeError):
+                pass
+        
+        # 按月份分组
+        monthly_data = {}
+        
+        # 按月份和分类分组统计
+        monthly_stats = queryset.annotate(
+            month=TruncMonth('transaction_date')
+        ).values(
+            'month', 
+            'category_id', 
+            'category__name', 
+            'category__is_income',
+            'is_expense'
+        ).annotate(
+            total_amount=Sum('amount'),
+            transaction_count=Count('id')
+        ).order_by('-month', 'category_id')
+        
+        # 组织数据按月份分组
+        for stat in monthly_stats:
+            month_date = stat['month']
+            month_str = month_date.strftime('%Y-%m')
+            
+            if month_str not in monthly_data:
+                monthly_data[month_str] = {
+                    'month': month_str,
+                    'month_timestamp': int(month_date.timestamp()),
+                    'categories': [],
+                    'total_expense': Decimal('0'),
+                    'total_income': Decimal('0'),
+                    'net_amount': Decimal('0')
+                }
+            
+            # 添加分类数据
+            category_data = {
+                'category_id': stat['category_id'],
+                'category_name': stat['category__name'] or 'Others',
+                'is_income': stat['category__is_income'],
+                'total_amount': stat['total_amount'],
+                'transaction_count': stat['transaction_count']
+            }
+            
+            # 更新月度总计
+            if stat['is_expense']:
+                monthly_data[month_str]['total_expense'] += stat['total_amount']
+            else:
+                monthly_data[month_str]['total_income'] += stat['total_amount']
+            
+            monthly_data[month_str]['categories'].append(category_data)
+        
+        # 计算净额并转换为列表
+        formatted_results = []
+        for month_str, data in monthly_data.items():
+            data['net_amount'] = data['total_income'] - data['total_expense']
+            formatted_results.append(data)
+        
+        # 按月份降序排序
+        formatted_results.sort(key=lambda x: x['month'], reverse=True)
+        
+        # 使用序列化器
+        serializer = MonthlyStatSerializer(formatted_results, many=True)
+        
+        # 使用分页器
+        page = self.paginate_queryset(serializer.data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        
+        # 如果没有分页，返回所有结果
+        return self.get_success_response(
+            data=serializer.data,
+            msg=_('获取成功')
         )
 
     def _get_time_period_params(self, time_period, offset=0):

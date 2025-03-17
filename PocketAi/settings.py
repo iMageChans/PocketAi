@@ -30,7 +30,7 @@ ALLOWED_HOSTS = ['localhost',
                  '127.0.0.1',
                  'users.pulseheath.com']
 
-BASE_URL = 'https://users.pulseheath.com/'
+BASE_URL = 'https://pocket.pulseheath.com/'
 TOKEN_COOKIE_NAME = 'joker'
 
 
@@ -152,7 +152,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # 添加这一行
-FORCE_SCRIPT_NAME = '/pocket'
+# FORCE_SCRIPT_NAME = '/pocket'
 
 # 确保这些设置也已启用
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
