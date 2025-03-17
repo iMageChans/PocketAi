@@ -28,10 +28,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost',
                  '127.0.0.1',
-                 'pocket.pulseheath.com']
+                 'pocket.nicebudgeting.com',]
 
 
-BASE_URL = 'https://pocket.pulseheath.com'
+BASE_URL = 'https://pocket.nicebudgeting.com'
 TOKEN_COOKIE_NAME = 'joker'
 FORCE_SCRIPT_NAME = '/pocket'
 
