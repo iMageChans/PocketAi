@@ -9,7 +9,7 @@ from requests.exceptions import RequestException
 logger = logging.getLogger(__name__)
 
 # 基础URL配置
-BASE_URL = 'https://pocket.pulseheath.com/agent/'
+BASE_URL = 'https://pocket.nicebudgeting.com/agent/'
 # BASE_URL = 'http://127.0.0.1:8000/'
 
 
