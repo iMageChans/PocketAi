@@ -64,7 +64,7 @@ def create_ai_chat(
         model_name: str = "	qwen-max",
         language: str = "zh-cn",
         user_template_id: str = None,
-) -> Optional[str]:
+) -> Optional[dict[str, Any]]:
     """
     调用AI聊天服务，获取对用户输入的回复
 

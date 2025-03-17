@@ -463,7 +463,17 @@ class MessageViewSet(CreateModelMixin,
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-            transactions = bot['transactions']
+            if 'content' in bot:
+                bot = bot['content']
+            else:
+                bot = bot
+
+            if "transactions" in bot:
+                transactions = bot['transactions']
+            elif "transactions" in bot['content']:
+                transactions = bot['content']['transactions']
+            else:
+                transactions = []
 
             transaction_ids = []
 
@@ -495,6 +505,8 @@ class MessageViewSet(CreateModelMixin,
 
             if "ai_output" in bot:
                 content = bot['ai_output']
+            elif "ai_output" in bot['content']:
+                content = bot['content']['ai_output']
             else:
                 content = bot['en']
 
