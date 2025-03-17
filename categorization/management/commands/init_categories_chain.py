@@ -51,19 +51,19 @@ class Command(BaseCommand):
         # 初始化资产分类
         asset_categories = [
             # Debit (借记卡/现金类)
-            {'name': _('现金'), 'category_type': 'debit', 'icon': '💵', 'is_positive_asset': True, 'sort_order': 1},
-            {'name': _('银行借记卡'), 'category_type': 'debit', 'icon': '💳', 'is_positive_asset': True, 'sort_order': 2},
-            {'name': _('定期存款'), 'category_type': 'debit', 'icon': '📱', 'is_positive_asset': True, 'sort_order': 3},
+            {'name': _('现金'), 'category_type': '借记卡/现金', 'icon': '💵', 'is_positive_asset': True, 'sort_order': 1},
+            {'name': _('银行借记卡'), 'category_type': '借记卡/现金', 'icon': '💳', 'is_positive_asset': True, 'sort_order': 2},
+            {'name': _('定期存款'), 'category_type': '借记卡/现金', 'icon': '📱', 'is_positive_asset': True, 'sort_order': 3},
 
             # Credit (信用卡类)
-            {'name': _('信用卡'), 'category_type': 'debit', 'icon': '💰', 'is_positive_asset': False,'sort_order': 4},
-            {'name': _('花呗'), 'category_type': 'credit', 'icon': '💳', 'is_positive_asset': False, 'sort_order': 5},
-            {'name': _('京东白条'), 'category_type': 'credit', 'icon': '💳', 'is_positive_asset': False, 'sort_order': 6},
+            {'name': _('信用卡'), 'category_type': '信用卡', 'icon': '💰', 'is_positive_asset': False,'sort_order': 4},
+            {'name': _('花呗'), 'category_type': '信用卡', 'icon': '💳', 'is_positive_asset': False, 'sort_order': 5},
+            {'name': _('京东白条'), 'category_type': '信用卡', 'icon': '💳', 'is_positive_asset': False, 'sort_order': 6},
 
             # Borrow/Lend (借贷类)
-            {'name': _('微信钱包'), 'category_type': 'network', 'icon': '📤', 'is_positive_asset': True, 'sort_order': 7},
-            {'name': _('支付宝'), 'category_type': 'network', 'icon': '📥', 'is_positive_asset': True, 'sort_order': 8},
-            {'name': _('其他'), 'category_type': 'network', 'icon': '🏦', 'is_positive_asset': True, 'sort_order': 9},
+            {'name': _('微信钱包'), 'category_type': '网络', 'icon': '📤', 'is_positive_asset': True, 'sort_order': 7},
+            {'name': _('支付宝'), 'category_type': '网络', 'icon': '📥', 'is_positive_asset': True, 'sort_order': 8},
+            {'name': _('其他'), 'category_type': '网络', 'icon': '🏦', 'is_positive_asset': True, 'sort_order': 9},
 
         ]
 
