@@ -52,6 +52,20 @@ class TransactionViewSet(CreateModelMixin,
         else:
             queryset = queryset.none()
             
+        # 按时间周期和偏移筛选
+        period = self.request.GET.get('period')
+        offset = self.request.GET.get('offset')
+        
+        if period and offset:
+            try:
+                start_datetime, end_datetime, _, _, _ = self._get_time_period_params(period, offset)
+                queryset = queryset.filter(
+                    transaction_date__gte=start_datetime,
+                    transaction_date__lte=end_datetime
+                )
+            except (ValueError, TypeError):
+                pass
+            
         # 按账本筛选
         ledger_id = self.request.GET.get('ledger_id')
         if ledger_id:
@@ -73,23 +87,6 @@ class TransactionViewSet(CreateModelMixin,
             is_expense = is_expense.lower() in ('true', '1', 'yes')
             queryset = queryset.filter(is_expense=is_expense)
             
-        # 按日期范围筛选
-        start_date = self.request.GET.get('start_date')
-        end_date = self.request.GET.get('end_date')
-        if start_date:
-            try:
-                start_date = datetime.fromtimestamp(int(start_date), tz=pytz.UTC)
-                queryset = queryset.filter(transaction_date__gte=start_date)
-            except (ValueError, TypeError):
-                pass
-                
-        if end_date:
-            try:
-                end_date = datetime.fromtimestamp(int(end_date), tz=pytz.UTC)
-                queryset = queryset.filter(transaction_date__lte=end_date)
-            except (ValueError, TypeError):
-                pass
-                
         # 按金额范围筛选
         min_amount = self.request.GET.get('min_amount')
         max_amount = self.request.GET.get('max_amount')
