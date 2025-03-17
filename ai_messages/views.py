@@ -463,6 +463,11 @@ class MessageViewSet(CreateModelMixin,
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
+            if 'content' in bot:
+                bot = bot['content']
+            else:
+                bot = bot
+
             if "transactions" in bot:
                 transactions = bot['transactions']
             elif "transactions" in bot['content']:
