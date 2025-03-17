@@ -62,7 +62,7 @@ def create_ai_chat(
         token: str,
         assistant_name: str = "Alice",
         model_name: str = "gpt-3.5-turbo",
-        language: str = "en",
+        language: str = "zh-cn",
         user_template_id: str = None,
 ) -> Optional[str]:
     """
