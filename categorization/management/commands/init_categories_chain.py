@@ -61,9 +61,9 @@ class Command(BaseCommand):
             {'name': _('京东白条'), 'category_type': 'credit', 'icon': '💳', 'is_positive_asset': False, 'sort_order': 6},
 
             # Borrow/Lend (借贷类)
-            {'name': _('微信钱包'), 'category_type': 'borrow_lend', 'icon': '📤', 'is_positive_asset': True, 'sort_order': 7},
-            {'name': _('支付宝'), 'category_type': 'borrow_lend', 'icon': '📥', 'is_positive_asset': True, 'sort_order': 8},
-            {'name': _('其他'), 'category_type': 'borrow_lend', 'icon': '🏦', 'is_positive_asset': True, 'sort_order': 9},
+            {'name': _('微信钱包'), 'category_type': 'network', 'icon': '📤', 'is_positive_asset': True, 'sort_order': 7},
+            {'name': _('支付宝'), 'category_type': 'network', 'icon': '📥', 'is_positive_asset': True, 'sort_order': 8},
+            {'name': _('其他'), 'category_type': 'network', 'icon': '🏦', 'is_positive_asset': True, 'sort_order': 9},
 
         ]
 

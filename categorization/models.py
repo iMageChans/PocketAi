@@ -29,6 +29,7 @@ class AssetCategory(models.Model):
         ('credit', _('信用卡')),
         ('borrow_lend', _('借贷')),
         ('investment', _('投资')),
+        ('network', _('网络')),
     )
     
     name = models.CharField(_('名称'), max_length=50)
