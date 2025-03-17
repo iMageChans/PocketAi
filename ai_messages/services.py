@@ -64,7 +64,7 @@ def create_ai_chat(
         model_name: str = "gpt-3.5-turbo",
         language: str = "en",
         user_template_id: str = None,
-) -> Optional[str]:
+) -> Optional[dict[str, Any]]:
     """
     调用AI聊天服务，获取对用户输入的回复
 
@@ -85,6 +85,7 @@ def create_ai_chat(
         "language": language,
         "user_template_id": user_template_id
     }
+    print(params)
 
     try:
         response = fire(url="api/agent/chat/", token=token, method="post", params=params)
