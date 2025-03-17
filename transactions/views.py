@@ -61,6 +61,19 @@ class TransactionViewSet(CreateModelMixin,
         asset_id = self.request.GET.get('asset_id')
         if asset_id:
             queryset = queryset.filter(asset_id=asset_id)
+
+        period = self.request.GET.get('period')
+        offset = self.request.GET.get('offset')
+
+        if period and offset:
+            try:
+                start_datetime, end_datetime, _, _, _ = self._get_time_period_params(period, offset)
+                queryset = queryset.filter(
+                    transaction_date__gte=start_datetime,
+                    transaction_date__lte=end_datetime
+                )
+            except (ValueError, TypeError):
+                pass
             
         # 按类别筛选
         category_id = self.request.GET.get('category_id')
