@@ -51,7 +51,7 @@ class GoalCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Goal
-        fields = ['name', 'target_amount', 'deadline', 'description']
+        fields = ['id', 'name', 'target_amount', 'deadline', 'description']
     
     def validate_target_amount(self, value):
         """验证目标金额必须大于0"""
@@ -64,7 +64,7 @@ class DepositCreateSerializer(serializers.ModelSerializer):
     """创建存款记录的序列化器"""
     class Meta:
         model = Deposit
-        fields = ['goal', 'amount', 'notes']
+        fields = ['id','goal', 'amount', 'notes']
     
     def validate(self, attrs):
         """验证存款操作"""
