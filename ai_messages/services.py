@@ -61,7 +61,7 @@ def create_ai_chat(
         users_input: str,
         token: str,
         assistant_name: str = "Alice",
-        model_name: str = "gpt-3.5-turbo",
+        model_name: str = "	qwen-max",
         language: str = "zh-cn",
         user_template_id: str = None,
 ) -> Optional[str]:
