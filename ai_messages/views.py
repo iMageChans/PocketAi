@@ -493,6 +493,7 @@ class MessageViewSet(CreateModelMixin,
                             is_income = True
                         try:
                             transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
+                            print(transaction_date)
                         except ValueError:
                             transaction_date = timezone.now()
                         new_transaction = Transaction.objects.create(

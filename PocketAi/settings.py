@@ -34,6 +34,7 @@ ALLOWED_HOSTS = ['localhost',
 BASE_URL = 'https://pocket.nicebudgeting.com'
 TOKEN_COOKIE_NAME = 'joker'
 FORCE_SCRIPT_NAME = '/pocket'
+BASE_PGSQL='postgres'
 
 
 # Application definition
