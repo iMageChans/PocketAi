@@ -19,6 +19,7 @@ from .services import creat_ai_chat, get_assistant_list
 from django.db import transaction as db_transaction
 from utils.viewsets import StandardResponseViewSet
 from utils.pagination import CustomPagination
+from decimal import Decimal
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -494,7 +495,7 @@ class MessageViewSet(CreateModelMixin,
                             ledger_id=ledger_id,
                             asset_id=asset_id,
                             category_id=get_category_id(transaction.get('category'), is_income),
-                            amount=transaction.get('amount', 0),
+                            amount=Decimal(str(transaction.get('amount', 0))),
                             transaction_date=transaction_date,
                             notes=transaction['note'],
                             is_expense=is_expense,
