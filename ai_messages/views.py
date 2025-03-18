@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
@@ -488,13 +491,16 @@ class MessageViewSet(CreateModelMixin,
                         else:
                             is_expense = False
                             is_income = True
-                        transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
+                        try:
+                            transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
+                        except ValueError:
+                            transaction_date = timezone.now()
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
                             asset_id=asset_id,
                             category_id=get_category_id(transaction.get('category'), is_income),
-                            amount=transaction.get('amount', 0),
+                            amount=Decimal(str(transaction.get('amount', 0))),
                             transaction_date=transaction_date,
                             notes=transaction['note'],
                             is_expense=is_expense,

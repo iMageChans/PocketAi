@@ -96,7 +96,7 @@ def create_ai_chat(
         return None
 
 
-def get_assistant_list(token: str) -> list:
+def get_assistant_list(token: str) -> dict[str, Any]:
     """
     获取助手列表
 
