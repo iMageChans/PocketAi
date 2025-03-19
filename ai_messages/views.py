@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from django.utils import timezone
+import pytz
+from django.utils import timezone as django_timezone
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
@@ -491,11 +492,12 @@ class MessageViewSet(CreateModelMixin,
                         else:
                             is_expense = False
                             is_income = True
-                        try:
-                            transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
-                            print(transaction_date)
-                        except ValueError:
-                            transaction_date = timezone.now()
+                        # try:
+                        #     tz_str = self.request.remote_user.get('timezone')
+                        #     timezone = pytz.timezone(tz_str)
+                        #     transaction_date = datetime.fromtimestamp(transaction['date'], tz=timezone)
+                        # except ValueError:
+                        transaction_date = django_timezone.now()
                         new_transaction = Transaction.objects.create(
                             user_id=user_id,
                             ledger_id=ledger_id,
