@@ -21,41 +21,41 @@ from .serializers import (
 
 
 class TransactionViewSet(CreateModelMixin,
-                       RetrieveModelMixin,
-                       UpdateModelMixin,
-                       PartialUpdateModelMixin,
-                       DestroyModelMixin,
-                       ListModelMixin,
-                       GenericViewSet):
+                         RetrieveModelMixin,
+                         UpdateModelMixin,
+                         PartialUpdateModelMixin,
+                         DestroyModelMixin,
+                         ListModelMixin,
+                         GenericViewSet):
     """交易记录视图集"""
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticatedExternal]
-    
+
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
         if self.action == 'create':
             return TransactionCreateSerializer
         return TransactionSerializer
-    
+
     def get_queryset(self):
         """获取当前用户的交易记录"""
         queryset = super().get_queryset()
-        
+
         # 从认证后的请求中获取用户ID
         user_id = None
         if hasattr(self.request, 'remote_user'):
             user_id = self.request.remote_user.get('id')
-            
+
         if user_id:
             queryset = queryset.filter(user_id=user_id)
         else:
             queryset = queryset.none()
-            
+
         # 按时间周期和偏移筛选
         period = self.request.GET.get('period')
         offset = self.request.GET.get('offset')
-        
+
         if period and offset:
             try:
                 start_datetime, end_datetime, _, _, _ = self._get_time_period_params(period, offset)
@@ -65,28 +65,28 @@ class TransactionViewSet(CreateModelMixin,
                 )
             except (ValueError, TypeError):
                 pass
-            
+
         # 按账本筛选
         ledger_id = self.request.GET.get('ledger_id')
         if ledger_id:
             queryset = queryset.filter(ledger_id=ledger_id)
-            
+
         # 按资产筛选
         asset_id = self.request.GET.get('asset_id')
         if asset_id:
             queryset = queryset.filter(asset_id=asset_id)
-            
+
         # 按类别筛选
         category_id = self.request.GET.get('category_id')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
-            
+
         # 按交易类型筛选
         is_expense = self.request.GET.get('is_expense')
         if is_expense is not None:
             is_expense = is_expense.lower() in ('true', '1', 'yes')
             queryset = queryset.filter(is_expense=is_expense)
-            
+
         # 按金额范围筛选
         min_amount = self.request.GET.get('min_amount')
         max_amount = self.request.GET.get('max_amount')
@@ -95,19 +95,19 @@ class TransactionViewSet(CreateModelMixin,
                 queryset = queryset.filter(amount__gte=Decimal(min_amount))
             except (ValueError, TypeError):
                 pass
-                
+
         if max_amount:
             try:
                 queryset = queryset.filter(amount__lte=Decimal(max_amount))
             except (ValueError, TypeError):
                 pass
-        
+
         # 按纳入统计筛选
         include_in_stats = self.request.GET.get('include_in_stats')
         if include_in_stats is not None:
             include_in_stats = include_in_stats.lower() in ('true', '1', 'yes')
             queryset = queryset.filter(include_in_stats=include_in_stats)
-            
+
         # 搜索关键词
         search = self.request.GET.get('search')
         if search:
@@ -117,41 +117,114 @@ class TransactionViewSet(CreateModelMixin,
                 Q(asset__name__icontains=search) |
                 Q(ledger__name__icontains=search)
             )
-            
+
         return queryset.select_related('ledger', 'asset', 'category')
-    
+
     def perform_create(self, serializer):
         """创建交易记录时自动添加用户ID"""
         user_id = self.request.remote_user.get('id')
-            
+
         if not user_id:
             raise serializers.ValidationError(_('无法获取用户ID'))
-            
+
         serializer.save(user_id=user_id)
-    
+
+    @action(detail=False, methods=['delete'])
+    def delete_all(self, request):
+        """删除用户的所有交易记录"""
+        # 获取用户ID
+        user_id = None
+        if hasattr(request, 'remote_user'):
+            user_id = request.remote_user.get('id')
+
+        if not user_id:
+            return Response({
+                'code': 401,
+                'msg': _('无法获取用户ID'),
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            # 筛选条件参数
+            ledger_id = request.query_params.get('ledger_id')
+            asset_id = request.query_params.get('asset_id')
+            category_id = request.query_params.get('category_id')
+            start_date = request.query_params.get('start_date')
+            end_date = request.query_params.get('end_date')
+
+            # 构建基础查询集
+            queryset = Transaction.objects.filter(user_id=user_id)
+
+            # 应用筛选条件
+            if ledger_id:
+                queryset = queryset.filter(ledger_id=ledger_id)
+
+            if asset_id:
+                queryset = queryset.filter(asset_id=asset_id)
+
+            if category_id:
+                queryset = queryset.filter(category_id=category_id)
+
+            if start_date:
+                try:
+                    start_date = datetime.fromtimestamp(int(start_date), tz=pytz.UTC)
+                    queryset = queryset.filter(transaction_date__gte=start_date)
+                except (ValueError, TypeError):
+                    pass
+
+            if end_date:
+                try:
+                    end_date = datetime.fromtimestamp(int(end_date), tz=pytz.UTC)
+                    queryset = queryset.filter(transaction_date__lte=end_date)
+                except (ValueError, TypeError):
+                    pass
+
+            # 执行删除操作
+            deleted_count = queryset.delete()[0]
+
+            return Response({
+                'code': 200,
+                'msg': _('删除成功'),
+                'data': {
+                    'deleted_count': deleted_count
+                }
+            })
+        except Exception as e:
+            # 记录错误日志
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"删除交易记录时出错: {str(e)}")
+
+            return Response({
+                'code': 500,
+                'msg': _('服务器内部错误'),
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'])
     def by_ledger(self, request):
         """根据账本ID列出交易记录，并计算统计数据"""
         ledger_id = request.query_params.get('ledger_id')
         if not ledger_id:
-            return self.get_error_response(msg=_('缺少账本ID参数'), code=400)
-        
+            return self.get_success_response(msg=_('缺少账本ID参数'), status_code=400)
+
         # 基础查询集
         queryset = self.get_queryset().filter(ledger_id=ledger_id, include_in_stats=True)
-        
+
         # 获取时间周期和偏移参数
         period = request.query_params.get('period', 'month')
         offset = request.query_params.get('offset', '0')
-        
+
         # 计算时间范围和获取导航信息
-        start_datetime, end_datetime, period_trunc, date_format, navigation_info = self._get_time_period_params(period, offset)
-        
+        start_datetime, end_datetime, period_trunc, date_format, navigation_info = self._get_time_period_params(period,
+                                                                                                                offset)
+
         # 时间范围筛选
         period_queryset = queryset.filter(
             transaction_date__gte=start_datetime,
             transaction_date__lte=end_datetime
         )
-        
+
         # 计算总统计数据
         summary = period_queryset.aggregate(
             total_expense=Coalesce(Sum(Case(
@@ -166,10 +239,10 @@ class TransactionViewSet(CreateModelMixin,
             )), Value(Decimal('0')), output_field=DecimalField()),
             transaction_count=Count('id')
         )
-        
+
         # 计算净额
         summary['net_amount'] = summary['total_income'] - summary['total_expense']
-        
+
         # 按时间段分组统计 - 修复类型混合问题
         period_stats = period_queryset.annotate(
             period=period_trunc
@@ -186,7 +259,7 @@ class TransactionViewSet(CreateModelMixin,
             )), Value(Decimal('0')), output_field=DecimalField()),
             transaction_count=Count('id')
         ).order_by('period')
-        
+
         # 格式化时间并计算净额
         formatted_periods = []
         for stat in period_stats:
@@ -199,17 +272,17 @@ class TransactionViewSet(CreateModelMixin,
                     'net_amount': stat['total_income'] - stat['total_expense'],
                     'transaction_count': stat['transaction_count']
                 })
-        
+
         # 按分类统计
         category_stats = period_queryset.values(
-            'category_id', 
-            'category__name', 
+            'category_id',
+            'category__name',
             'category__is_income'
         ).annotate(
             total_amount=Sum('amount'),
             transaction_count=Count('id')
         ).order_by('-total_amount')
-        
+
         # 格式化分类统计
         formatted_categories = []
         for stat in category_stats:
@@ -221,12 +294,12 @@ class TransactionViewSet(CreateModelMixin,
                     'total_amount': stat['total_amount'],
                     'transaction_count': stat['transaction_count']
                 })
-        
+
         # 序列化结果
         summary_serializer = TransactionSummarySerializer(summary)
         periods_serializer = TransactionSummarySerializer(formatted_periods, many=True)
         categories_serializer = CategorySummarySerializer(formatted_categories, many=True)
-        
+
         # 在响应中添加导航信息
         return self.get_success_response(
             data={
@@ -237,7 +310,7 @@ class TransactionViewSet(CreateModelMixin,
             },
             msg=_('获取成功')
         )
-    
+
     @action(detail=False, methods=['get'])
     def by_asset(self, request):
         """根据资产获取交易记录的统计数据"""
@@ -247,25 +320,26 @@ class TransactionViewSet(CreateModelMixin,
                 msg='缺少资产ID参数',
                 status_code=status.HTTP_400_BAD_REQUEST
             )
-            
+
         queryset = self.get_queryset().filter(asset_id=asset_id, include_in_stats=True)
-        
+
         # 获取时间周期和偏移参数
         period = request.query_params.get('period', 'month')
         if period not in ['month', 'year']:
             period = 'month'  # 对于资产视图，只支持month和year
-        
+
         offset = request.query_params.get('offset', '0')
-        
+
         # 计算时间范围和获取导航信息
-        start_datetime, end_datetime, period_trunc, date_format, navigation_info = self._get_time_period_params(period, offset)
-        
+        start_datetime, end_datetime, period_trunc, date_format, navigation_info = self._get_time_period_params(period,
+                                                                                                                offset)
+
         # 时间范围筛选
         period_queryset = queryset.filter(
             transaction_date__gte=start_datetime,
             transaction_date__lte=end_datetime
         )
-        
+
         # 计算总收支情况 - 修复类型混合问题
         summary = period_queryset.aggregate(
             total_expense=Coalesce(Sum(Case(
@@ -280,10 +354,10 @@ class TransactionViewSet(CreateModelMixin,
             )), Value(Decimal('0')), output_field=DecimalField()),
             transaction_count=Count('id')
         )
-        
+
         # 计算净额
         summary['net_amount'] = summary['total_income'] - summary['total_expense']
-        
+
         # 按时间段分组统计 - 修复类型混合问题
         period_stats = period_queryset.annotate(
             period=period_trunc
@@ -300,7 +374,7 @@ class TransactionViewSet(CreateModelMixin,
             )), Value(Decimal('0')), output_field=DecimalField()),
             transaction_count=Count('id')
         ).order_by('period')
-        
+
         # 格式化时间并计算净额
         formatted_periods = []
         for stat in period_stats:
@@ -313,17 +387,17 @@ class TransactionViewSet(CreateModelMixin,
                     'net_amount': stat['total_income'] - stat['total_expense'],
                     'transaction_count': stat['transaction_count']
                 })
-        
+
         # 按分类统计
         category_stats = period_queryset.values(
-            'category_id', 
-            'category__name', 
+            'category_id',
+            'category__name',
             'category__is_income'
         ).annotate(
             total_amount=Sum('amount'),
             transaction_count=Count('id')
         ).order_by('-total_amount')
-        
+
         # 格式化分类统计
         formatted_categories = []
         for stat in category_stats:
@@ -335,12 +409,12 @@ class TransactionViewSet(CreateModelMixin,
                     'total_amount': stat['total_amount'],
                     'transaction_count': stat['transaction_count']
                 })
-        
+
         # 序列化结果
         summary_serializer = TransactionSummarySerializer(summary)
         periods_serializer = TransactionSummarySerializer(formatted_periods, many=True)
         categories_serializer = CategorySummarySerializer(formatted_categories, many=True)
-        
+
         # 在响应中添加导航信息
         return self.get_success_response(
             data={
@@ -358,9 +432,8 @@ class TransactionViewSet(CreateModelMixin,
         # 获取资产ID
         asset_id = request.query_params.get('asset_id')
         if not asset_id:
-            return self.get_error_response(
+            return self.get_success_response(
                 msg=_('缺少资产ID参数'),
-                code=400,
                 status_code=status.HTTP_400_BAD_REQUEST
             )
 
@@ -370,9 +443,8 @@ class TransactionViewSet(CreateModelMixin,
             user_id = request.remote_user.get('id')
 
         if not user_id:
-            return self.get_error_response(
+            return self.get_success_response(
                 msg=_('无法获取用户ID'),
-                code=401,
                 status_code=status.HTTP_401_UNAUTHORIZED
             )
 
@@ -486,7 +558,7 @@ class TransactionViewSet(CreateModelMixin,
         """
         today = timezone.now().date()
         offset = int(offset) if offset else 0
-        
+
         # 记录导航信息用于返回给前端
         navigation_info = {
             'period': time_period,
@@ -494,7 +566,7 @@ class TransactionViewSet(CreateModelMixin,
             'previous_offset': offset - 1,
             'next_offset': offset + 1
         }
-        
+
         if time_period == 'day':
             # 每日视图，偏移日期
             target_date = today + timedelta(days=offset)
@@ -503,7 +575,7 @@ class TransactionViewSet(CreateModelMixin,
             trunc_func = TruncDay('transaction_date')  # 已实例化的截断函数
             date_format = '%Y-%m-%d'
             navigation_info['period_display'] = target_date.strftime('%Y-%m-%d')
-            
+
         elif time_period == 'week':
             # 周视图，计算所在周的周一
             target_date = today + timedelta(weeks=offset)
@@ -513,7 +585,7 @@ class TransactionViewSet(CreateModelMixin,
             trunc_func = TruncWeek('transaction_date')  # 已实例化的截断函数
             date_format = '%Y-%m-%d'
             navigation_info['period_display'] = f"{start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}"
-            
+
         elif time_period == 'year':
             # 年视图，计算目标年份
             target_year = today.year + offset
@@ -522,12 +594,12 @@ class TransactionViewSet(CreateModelMixin,
             trunc_func = TruncYear('transaction_date')  # 已实例化的截断函数
             date_format = '%Y'
             navigation_info['period_display'] = str(target_year)
-            
+
         else:  # 默认为month
             # 月视图，计算目标月份
             target_month = today.month + offset
             target_year = today.year
-            
+
             # 处理月份溢出
             while target_month > 12:
                 target_month -= 12
@@ -535,7 +607,7 @@ class TransactionViewSet(CreateModelMixin,
             while target_month < 1:
                 target_month += 12
                 target_year -= 1
-            
+
             # 计算月初和月末
             start_date = datetime(target_year, target_month, 1).date()
             # 下月第一天减一天 = 本月最后一天
@@ -543,12 +615,12 @@ class TransactionViewSet(CreateModelMixin,
                 end_date = datetime(target_year + 1, 1, 1).date() - timedelta(days=1)
             else:
                 end_date = datetime(target_year, target_month + 1, 1).date() - timedelta(days=1)
-            
+
             trunc_func = TruncMonth('transaction_date')  # 已实例化的截断函数
             date_format = '%Y-%m'
             month_name = start_date.strftime('%B')  # 月份的完整名称
             navigation_info['period_display'] = f"{month_name} {target_year}"
-        
+
         # 将日期转为datetime并设置时区
         start_datetime = timezone.make_aware(
             datetime.combine(start_date, datetime.min.time())
@@ -556,9 +628,9 @@ class TransactionViewSet(CreateModelMixin,
         end_datetime = timezone.make_aware(
             datetime.combine(end_date, datetime.max.time())
         )
-        
+
         # 添加时间边界到导航信息
         navigation_info['start_date'] = int(start_datetime.timestamp())
         navigation_info['end_date'] = int(end_datetime.timestamp())
-        
+
         return start_datetime, end_datetime, trunc_func, date_format, navigation_info
