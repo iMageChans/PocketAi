@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
 import pytz
+from rest_framework.response import Response
 
 from utils.permissions import IsAuthenticatedExternal
 from utils.mixins import *
@@ -488,6 +489,78 @@ class TransactionViewSet(CreateModelMixin,
             data=serializer.data,
             msg=_('获取成功')
         )
+
+    @action(detail=False, methods=['delete'])
+    def delete_all(self, request):
+        """删除用户的所有交易记录"""
+        # 获取用户ID
+        user_id = None
+        if hasattr(request, 'remote_user'):
+            user_id = request.remote_user.get('id')
+            
+        if not user_id:
+            return Response({
+                'code': 401,
+                'msg': _('无法获取用户ID'),
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+            
+        try:
+            # 筛选条件参数
+            ledger_id = request.query_params.get('ledger_id')
+            asset_id = request.query_params.get('asset_id')
+            category_id = request.query_params.get('category_id')
+            start_date = request.query_params.get('start_date')
+            end_date = request.query_params.get('end_date')
+            
+            # 构建基础查询集
+            queryset = Transaction.objects.filter(user_id=user_id)
+            
+            # 应用筛选条件
+            if ledger_id:
+                queryset = queryset.filter(ledger_id=ledger_id)
+                
+            if asset_id:
+                queryset = queryset.filter(asset_id=asset_id)
+                
+            if category_id:
+                queryset = queryset.filter(category_id=category_id)
+                
+            if start_date:
+                try:
+                    start_date = datetime.fromtimestamp(int(start_date), tz=pytz.UTC)
+                    queryset = queryset.filter(transaction_date__gte=start_date)
+                except (ValueError, TypeError):
+                    pass
+                    
+            if end_date:
+                try:
+                    end_date = datetime.fromtimestamp(int(end_date), tz=pytz.UTC)
+                    queryset = queryset.filter(transaction_date__lte=end_date)
+                except (ValueError, TypeError):
+                    pass
+            
+            # 执行删除操作
+            deleted_count = queryset.delete()[0]
+            
+            return Response({
+                'code': 200,
+                'msg': _('删除成功'),
+                'data': {
+                    'deleted_count': deleted_count
+                }
+            })
+        except Exception as e:
+            # 记录错误日志
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"删除交易记录时出错: {str(e)}")
+            
+            return Response({
+                'code': 500,
+                'msg': _('服务器内部错误'),
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _get_time_period_params(self, time_period, offset=0):
         """

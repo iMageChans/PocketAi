@@ -55,6 +55,48 @@ class MessageSessionViewSet(CreateModelMixin,
         except MessageSession.DoesNotExist:
             raise Http404(_("没有找到符合条件的会话"))
 
+    @action(detail=False, methods=['delete'])
+    def delete_all(self, request):
+        """删除用户的所有消息和会话"""
+        # 获取用户ID
+        user_id = None
+        if hasattr(request, 'remote_user'):
+            user_id = request.remote_user.get('id')
+
+        if not user_id:
+            return Response({
+                'code': 401,
+                'msg': _('无法获取用户ID'),
+                'data': None
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            with db_transaction.atomic():
+                # 获取用户的所有会话ID
+                session_ids = MessageSession.objects.filter(user_id=user_id).values_list('id', flat=True)
+                
+                # 删除用户的所有消息
+                deleted_messages_count = Message.objects.filter(session_id__in=session_ids).delete()[0]
+                
+                # 删除用户的所有会话
+                deleted_sessions_count = MessageSession.objects.filter(user_id=user_id).delete()[0]
+                
+                return Response({
+                    'code': 200,
+                    'msg': _('删除成功'),
+                    'data': {
+                        'deleted_messages_count': deleted_messages_count,
+                        'deleted_sessions_count': deleted_sessions_count
+                    }
+                })
+        except Exception as e:
+            logger.error(f"删除用户消息和会话时出错: {str(e)}")
+            return Response({
+                'code': 500,
+                'msg': _('服务器内部错误'),
+                'data': None
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def get_serializer_class(self):
         """根据操作返回不同的序列化器"""
         if self.action == 'create':
