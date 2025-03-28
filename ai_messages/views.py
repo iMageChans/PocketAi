@@ -548,10 +548,11 @@ class MessageViewSet(CreateModelMixin,
 
             if "ai_output" in bot:
                 content = bot['ai_output']
-            elif "ai_output" in bot['content']:
-                content = bot['content']['ai_output']
-            else:
-                content = bot['content']['en']
+            elif "content" in bot:
+                if "ai_output" in bot['content']:
+                    content = bot['content']['ai_output']
+                else:
+                    content = bot['content']['en']
 
             # 创建AI回复消息
             ai_message = Message.objects.create(
