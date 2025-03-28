@@ -559,7 +559,7 @@ class MessageViewSet(CreateModelMixin,
             elif "ai_output" in bot['content']:
                 content = bot['content']['ai_output']
             else:
-                content = bot['en']
+                content = bot['content']['en']
 
             # 创建AI回复消息
             ai_message = Message.objects.create(
