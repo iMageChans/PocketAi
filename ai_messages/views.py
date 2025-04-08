@@ -553,6 +553,13 @@ class MessageViewSet(CreateModelMixin,
                     content = bot['content']['ai_output']
                 else:
                     content = bot['content']['en']
+            elif "en" in bot:
+                if "ai_output" in bot['en']:
+                    content = bot['en']['ai_output']
+                else:
+                    content = bot['en']
+            else:
+                content = "The server is busy. Please try again later."
 
             # 创建AI回复消息
             ai_message = Message.objects.create(
