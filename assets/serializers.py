@@ -44,7 +44,7 @@ class AssetCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
         fields = [
-            'name', 'category', 'currency', 'balance', 
+            'id', 'name', 'category', 'currency', 'balance',
             'notes', 'include_in_total'
         ]
 
