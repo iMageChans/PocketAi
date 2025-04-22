@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 from django.http import Http404
 
 from datetime import datetime
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation
 
 from transactions.models import Transaction
 from utils.permissions import IsAuthenticatedExternal
@@ -19,7 +21,6 @@ from .services import creat_ai_chat, get_assistant_list
 from django.db import transaction as db_transaction
 from utils.viewsets import StandardResponseViewSet
 from utils.pagination import CustomPagination
-from decimal import Decimal
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -424,7 +425,7 @@ class MessageViewSet(CreateModelMixin,
 
     def _process_message(self, request, is_voice=False):
         """处理消息的通用方法"""
-        # 使用序列化器验证请求数据
+        # 1. 验证请求数据
         serializer = MessageProcessSerializer(data=request.data)
         if not serializer.is_valid():
             return Response({
@@ -433,7 +434,7 @@ class MessageViewSet(CreateModelMixin,
                 'data': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # 获取验证后的数据
+        # 2. 获取验证后的数据
         validated_data = serializer.validated_data
         session_id = validated_data['session_id']
         content = validated_data['content']
@@ -445,11 +446,8 @@ class MessageViewSet(CreateModelMixin,
         voice_date = validated_data.get('voice_date')
         user_template_id = validated_data.get('user_template_id', None)
 
-        # 获取用户ID
-        user_id = None
-        if hasattr(request, 'remote_user'):
-            user_id = request.remote_user.get('id')
-
+        # 3. 获取用户ID并验证
+        user_id = self._get_user_id(request)
         if not user_id:
             return Response({
                 'code': 401,
@@ -457,7 +455,64 @@ class MessageViewSet(CreateModelMixin,
                 'data': None
             }, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 验证会话归属
+        # 4. 验证会话归属
+        session_validation_result = self._validate_session(session_id, user_id)
+        if isinstance(session_validation_result, Response):
+            return session_validation_result
+        session = session_validation_result
+
+        # 5. 使用事务确保数据一致性
+        with db_transaction.atomic():
+            # 5.1 保存用户消息
+            user_message = self._create_user_message(user_id, session, content, is_voice, file_path, voice_date)
+            
+            # 5.2 获取AI回复
+            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+            model_name = self._get_model_name(session.model)
+            
+            bot_response = creat_ai_chat(content, auth_header, model_name=model_name)
+            if bot_response is None:
+                return Response({
+                    'code': 400,
+                    'msg': _('bot is None'),
+                    'data': None
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 5.3 处理交易数据
+            transactions = self._extract_transactions(bot_response)
+            transaction_ids = self._process_transactions(transactions, user_id, ledger_id, asset_id)
+            
+            # 5.4 提取AI回复内容
+            ai_content = self._extract_ai_content(bot_response)
+            
+            # 5.5 获取随机值和表情
+            random_value, emoji_value = self._extract_random_emoji(bot_response)
+            
+            # 5.6 创建AI回复消息
+            ai_message = self._create_ai_message(
+                user_id, session, ai_content, random_value, emoji_value, transaction_ids
+            )
+
+        # 6. 更新会话的最后更新时间
+        session.save()  # 触发auto_now字段更新
+
+        # 7. 返回成功响应
+        return Response({
+            'code': 200,
+            'msg': _('发送成功'),
+            'data': {
+                'results': [MessageSerializer(user_message).data, MessageSerializer(ai_message).data]
+            }
+        })
+
+    def _get_user_id(self, request):
+        """从请求中获取用户ID"""
+        if hasattr(request, 'remote_user'):
+            return request.remote_user.get('id')
+        return None
+
+    def _validate_session(self, session_id, user_id):
+        """验证会话归属"""
         try:
             session = MessageSession.objects.get(id=session_id)
             if session.user_id != user_id:
@@ -466,6 +521,7 @@ class MessageViewSet(CreateModelMixin,
                     'msg': _('无法在其他用户的会话中发送消息'),
                     'data': None
                 }, status=status.HTTP_403_FORBIDDEN)
+            return session
         except MessageSession.DoesNotExist:
             return Response({
                 'code': 404,
@@ -473,120 +529,172 @@ class MessageViewSet(CreateModelMixin,
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # 使用事务确保数据一致性
-        with db_transaction.atomic():
-            # 保存用户消息
-            user_message = Message.objects.create(
-                user_id=user_id,
-                session=session,
-                content=content,
-                message_type=Message.TYPE_USER,
-                is_user=True,
-                is_voice=is_voice,
-                file_path=file_path,
-                voice_date=voice_date,
-            )
+    def _create_user_message(self, user_id, session, content, is_voice, file_path, voice_date):
+        """创建用户消息"""
+        return Message.objects.create(
+            user_id=user_id,
+            session=session,
+            content=content,
+            message_type=Message.TYPE_USER,
+            is_user=True,
+            is_voice=is_voice,
+            file_path=file_path,
+            voice_date=voice_date,
+        )
 
-            auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    def _get_model_name(self, model):
+        """获取模型名称"""
+        if model == 'ChatGPT':
+            return 'gpt-3.5-turbo'
+        elif model == 'DeepSeek':
+            return 'deepseek-chat'
+        else:
+            return 'qwen-max'
 
-            model_name = session.model
+    def _extract_transactions(self, bot_response):
+        """从AI响应中提取交易数据"""
+        transactions = []
+        
+        # 记录日志，帮助调试
+        logger.debug(f"AI响应原始数据: {bot_response}")
+        
+        if not isinstance(bot_response, dict):
+            return []
+        
+        # 提取content字段
+        bot_content = bot_response.get('content', bot_response)
+        
+        # 从不同可能的位置提取transactions
+        if isinstance(bot_content, dict):
+            if "transactions" in bot_content:
+                transactions = bot_content["transactions"]
+            elif "content" in bot_content and isinstance(bot_content["content"], dict):
+                if "transactions" in bot_content["content"]:
+                    transactions = bot_content["content"]["transactions"]
+        elif "transactions" in bot_response:
+            transactions = bot_response["transactions"]
+        
+        # 确保transactions是列表
+        if not isinstance(transactions, list):
+            transactions = []
+        
+        logger.debug(f"提取的交易数据: {transactions}")
+        return transactions
 
-            if model_name == 'ChatGPT':
-                model_name = 'gpt-3.5-turbo'
-            elif model_name == 'DeepSeek':
-                model_name = 'deepseek-chat'
-            else:
-                model_name = 'qwen-max'
+    def _process_transactions(self, transactions, user_id, ledger_id, asset_id):
+        """处理交易数据并创建交易记录"""
+        transaction_ids = []
+        
+        if not transactions:
+            return transaction_ids
+        
+        for transaction in transactions:
+            try:
+                # 确定交易类型
+                is_expense = transaction.get('type') == 'expense'
+                is_income = not is_expense
+                
+                # 解析交易日期
+                transaction_date = self._parse_transaction_date(transaction)
+                
+                # 解析交易金额
+                amount = self._parse_transaction_amount(transaction)
+                
+                # 获取分类ID
+                category_id = get_category_id(transaction.get('category'), is_income)
+                
+                # 创建交易记录
+                new_transaction = Transaction.objects.create(
+                    user_id=user_id,
+                    ledger_id=ledger_id,
+                    asset_id=asset_id,
+                    category_id=category_id,
+                    amount=amount,
+                    transaction_date=transaction_date,
+                    notes=transaction.get('note', ''),
+                    is_expense=is_expense,
+                )
+                transaction_ids.append(new_transaction.id)
+                logger.debug(f"成功创建交易记录: ID={new_transaction.id}")
+            except Exception as e:
+                logger.error(f"创建交易记录失败: {str(e)}, 交易数据: {transaction}")
+        
+        return transaction_ids
 
-            bot = creat_ai_chat(content, auth_header, model_name=model_name)
-            if bot is None:
-                return Response({
-                'code': 400,
-                'msg': _('bot is None'),
-                'data': None
-            }, status=status.HTTP_400_BAD_REQUEST)
+    def _parse_transaction_date(self, transaction):
+        """解析交易日期"""
+        try:
+            return datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
+        except (ValueError, KeyError):
+            try:
+                return datetime.strptime(transaction.get('date', ''), "%Y-%m-%d")
+            except (ValueError, KeyError):
+                logger.warning(f"无法解析交易日期，使用当前时间: {transaction}")
+                return timezone.now()
 
-            if 'content' in bot:
-                bot = bot['content']
-            else:
-                bot = bot
+    def _parse_transaction_amount(self, transaction):
+        """解析交易金额"""
+        try:
+            return Decimal(str(transaction.get('amount', 0)))
+        except (ValueError, TypeError, InvalidOperation):
+            logger.warning(f"无效的交易金额: {transaction.get('amount')}")
+            return Decimal('0')
 
-            if "transactions" in bot:
-                transactions = bot['transactions']
-            elif "transactions" in bot['content']:
-                transactions = bot['content']['transactions']
-            else:
-                transactions = []
+    def _extract_ai_content(self, bot_response):
+        """从AI响应中提取内容"""
+        default_content = "The server is busy. Please try again later."
+        
+        if not isinstance(bot_response, dict):
+            return default_content
+        
+        # 按优先级尝试不同的内容位置
+        if "ai_output" in bot_response:
+            return bot_response['ai_output']
+        
+        if "content" in bot_response:
+            content = bot_response['content']
+            if isinstance(content, dict):
+                if "ai_output" in content:
+                    return content['ai_output']
+                if "en" in content:
+                    return content['en']
+            if isinstance(content, str):
+                return content
+        
+        if "en" in bot_response:
+            en_content = bot_response['en']
+            if isinstance(en_content, dict) and "ai_output" in en_content:
+                return en_content['ai_output']
+            if isinstance(en_content, str):
+                return en_content
+        
+        return default_content
 
-            transaction_ids = []
+    def _extract_random_emoji(self, bot_response):
+        """从AI响应中提取随机值和表情"""
+        if isinstance(bot_response, dict):
+            return bot_response.get('random', 0), bot_response.get('emoji', '')
+        return 0, ''
 
-            # 处理交易
-            if transactions:
-                for transaction in transactions:
-                    try:
-                        # 创建交易记录，使用正确的字段名
-                        if transaction.get('type') == 'expense':
-                            is_expense = True
-                            is_income = False
-                        else:
-                            is_expense = False
-                            is_income = True
-                        transaction_date = datetime.strptime(transaction['date'], "%Y-%m-%d %H:%M:%S")
-                        new_transaction = Transaction.objects.create(
-                            user_id=user_id,
-                            ledger_id=ledger_id,
-                            asset_id=asset_id,
-                            category_id=get_category_id(transaction.get('category'), is_income),
-                            amount=Decimal(str(transaction.get('amount', 0))),
-                            transaction_date=transaction_date,
-                            notes=transaction['note'],
-                            is_expense=is_expense,
-                        )
-                        transaction_ids.append(new_transaction.id)
-                    except Exception as e:
-                        logger.error(f"创建交易记录失败: {str(e)}")
-
-            if "ai_output" in bot:
-                content = bot['ai_output']
-            elif "content" in bot:
-                if "ai_output" in bot['content']:
-                    content = bot['content']['ai_output']
-                else:
-                    content = bot['content']['en']
-            elif "en" in bot:
-                if "ai_output" in bot['en']:
-                    content = bot['en']['ai_output']
-                else:
-                    content = bot['en']
-            else:
-                content = "The server is busy. Please try again later."
-
-            # 创建AI回复消息
-            ai_message = Message.objects.create(
-                user_id=user_id,
-                session=session,
-                content=content,
-                message_type=Message.TYPE_ASSISTANT,
-                is_user=False,
-                random=bot['random'],
-                emoji=bot['emoji'],
-            )
-
-            # 如果有交易ID，设置到消息中
-            if transaction_ids:
-                ai_message.transaction_ids = ','.join(str(id) for id in transaction_ids)
-                ai_message.save()
-
-        # 更新会话的最后更新时间
-        session.save()  # 触发auto_now字段更新
-
-        return Response({
-            'code': 200,
-            'msg': _('发送成功'),
-            'data': {
-                'results': [MessageSerializer(user_message).data, MessageSerializer(ai_message).data]
-            }
-        })
+    def _create_ai_message(self, user_id, session, content, random_value, emoji_value, transaction_ids):
+        """创建AI回复消息"""
+        ai_message = Message.objects.create(
+            user_id=user_id,
+            session=session,
+            content=content,
+            message_type=Message.TYPE_ASSISTANT,
+            is_user=False,
+            random=random_value,
+            emoji=emoji_value,
+        )
+        
+        # 如果有交易ID，设置到消息中
+        if transaction_ids:
+            ai_message.set_transaction_ids_list(transaction_ids)
+            ai_message.save()
+            logger.debug(f"设置AI消息的交易IDs: {ai_message.transaction_ids}")
+        
+        return ai_message
 
     @action(detail=False, methods=['get'])
     def message_usage(self, request):
